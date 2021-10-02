@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">GPS Tracker Online</string>
+    <string name="map_desc">In this map you see where you currently are</string>
+</resources>
