@@ -1,5 +1,7 @@
 package com.vasciie.gpstrackeronline;
 
+import android.location.LocationManager;
+import android.location.LocationRequest;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -25,7 +27,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
-                    .add(R.id.primary_map, SupportMapFragment.class, null)
+                    .add(R.id.mapView, SupportMapFragment.class, null)
                     .commit();
         }
 
@@ -33,11 +35,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getSupportFragmentManager().addFragmentOnAttachListener(new FragmentOnAttachListener() {
             @Override
             public void onAttachFragment(@NonNull FragmentManager fragmentManager, @NonNull Fragment fragment) {
-                ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.primary_map))
+                ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView))
                         .getMapAsync(thisActivity);
             }
         });
+
+
     }
+
+
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
