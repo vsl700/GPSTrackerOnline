@@ -63,26 +63,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locResult) {
-                if(currentMarker != null)
+                boolean prevNull = currentMarker == null;
+                if(!prevNull)
                     currentMarker.remove();
 
                 Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
                 LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
                 currentMarker = gMap.addMarker(new MarkerOptions().position(current)
                         .title("Your are here").draggable(false));
-                moveMapCamera();
-            }
 
-            @Override
-            public void onLocationAvailability(@NonNull LocationAvailability locationAvailability) {
-                if(currentMarker != null)
-                    currentMarker.remove();
-
-                //TODO Delete this method when fixed the no-callback problem
+                if(prevNull)
+                    moveMapCamera();
             }
         };
 
-        startLocationUpdates();
+
     }
 
     private void moveMapCamera(){
@@ -109,6 +104,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // ...
             System.out.println("Success");
             //System.out.println(locationSettingsResponse.getLocationSettingsStates());
+            startLocationUpdates();
         });
 
         /*((Task<?>) task).addOnFailureListener(this, new OnFailureListener() {
