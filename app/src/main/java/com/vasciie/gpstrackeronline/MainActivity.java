@@ -13,7 +13,6 @@ import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationAvailability;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
@@ -28,8 +27,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -76,13 +73,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     moveMapCamera();
             }
         };
-
-
     }
 
     private void moveMapCamera(){
-        if(currentMarker != null)
+        if(currentMarker != null) {
+            gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
             gMap.moveCamera(CameraUpdateFactory.newLatLng(currentMarker.getPosition()));
+        }
     }
 
     private LocationRequest locRequest;
@@ -104,31 +101,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // ...
             System.out.println("Success");
             //System.out.println(locationSettingsResponse.getLocationSettingsStates());
+            requestingLocationUpdates = true;
             startLocationUpdates();
         });
 
-        /*((Task<?>) task).addOnFailureListener(this, new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                if (e instanceof ResolvableApiException) {
-                    // Location settings are not satisfied, but this can be fixed
-                    // by showing the user a dialog.
-                    try {
-                        // Show the dialog by calling startResolutionForResult(),
-                        // and check the result in onActivityResult().
-                        ResolvableApiException resolvable = (ResolvableApiException) e;
-                        resolvable.startResolutionForResult(MainActivity.this,
-                                REQUEST_CHECK_SETTINGS);
-                    } catch (IntentSender.SendIntentException sendEx) {
-                        // Ignore the error.
-                    }
+        task.addOnFailureListener(this, e -> {
+            if (e instanceof ResolvableApiException) {
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                try {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    ResolvableApiException resolvable = (ResolvableApiException) e;
+                    resolvable.startResolutionForResult(MainActivity.this,
+                            0);
+
+                    e.printStackTrace();
+                } catch (IntentSender.SendIntentException sendEx) {
+                    // Ignore the error.
                 }
             }
-        });*/
+        });
     }
 
     private void startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
             //    ActivityCompat#requestPermissions
             // here to request the missing permissions, and then overriding
@@ -148,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //requestingLocationUpdates = false;
     }
 
-    private boolean requestingLocationUpdates = true;
+    private boolean requestingLocationUpdates = false;
     @Override
     public void onResume() {
         super.onResume();
