@@ -1,17 +1,16 @@
 package com.vasciie.gpstrackeronline;
 
 import android.Manifest;
-import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import com.google.android.gms.common.api.ResolvableApiException;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -42,6 +41,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Button currentLocBtn = findViewById(R.id.currentLoc);
+        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
+
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
@@ -67,17 +69,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
                 LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
                 currentMarker = gMap.addMarker(new MarkerOptions().position(current)
-                        .title("Your are here").draggable(false));
+                        .title("You are here").draggable(false));
 
                 if(prevNull)
-                    moveMapCamera();
+                    moveMapCamera(true);
             }
         };
     }
 
-    private void moveMapCamera(){
+    private void moveMapCamera(boolean zoom){
         if(currentMarker != null) {
-            gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
+            if(zoom)
+                gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
+
             gMap.moveCamera(CameraUpdateFactory.newLatLng(currentMarker.getPosition()));
         }
     }
@@ -87,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
         locRequest.setFastestInterval(1000); //CHANGE TO 5000
-        locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        locRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(locRequest);
@@ -98,51 +102,38 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         task.addOnSuccessListener(this, locationSettingsResponse -> {
             // All location settings are satisfied. The client can initialize
             // location requests here.
-            // ...
+
             System.out.println("Success");
-            //System.out.println(locationSettingsResponse.getLocationSettingsStates());
+
             requestingLocationUpdates = true;
             startLocationUpdates();
-        });
-
-        task.addOnFailureListener(this, e -> {
-            if (e instanceof ResolvableApiException) {
-                // Location settings are not satisfied, but this can be fixed
-                // by showing the user a dialog.
-                try {
-                    // Show the dialog by calling startResolutionForResult(),
-                    // and check the result in onActivityResult().
-                    ResolvableApiException resolvable = (ResolvableApiException) e;
-                    resolvable.startResolutionForResult(MainActivity.this,
-                            0);
-
-                    e.printStackTrace();
-                } catch (IntentSender.SendIntentException sendEx) {
-                    // Ignore the error.
-                }
-            }
         });
     }
 
     private void startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            System.exit(0);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
             return;
         }
+
         fusedLocationClient.requestLocationUpdates(locRequest, locCallback, Looper.getMainLooper());
-        //requestingLocationUpdates = true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // I used a 'for' just in case I add more permissions
+        for (int grantResult : grantResults) {
+            if (grantResult == PackageManager.PERMISSION_GRANTED)
+                return;
+        }
+
+        System.exit(0);
     }
 
     private void stopLocationUpdates(){
         fusedLocationClient.removeLocationUpdates(locCallback);
-        //requestingLocationUpdates = false;
     }
 
     private boolean requestingLocationUpdates = false;

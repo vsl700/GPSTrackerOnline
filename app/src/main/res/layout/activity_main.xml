@@ -8,7 +8,7 @@
     tools:context=".MainActivity">
 
     <Button
-        android:id="@+id/button"
+        android:id="@+id/currentLoc"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="@string/current_loc_btn"
@@ -24,6 +24,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button" />
+        app:layout_constraintTop_toBottomOf="@+id/currentLoc" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
