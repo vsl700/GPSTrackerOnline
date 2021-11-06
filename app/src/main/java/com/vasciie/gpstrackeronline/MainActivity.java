@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
         locRequest.setFastestInterval(1000); //CHANGE TO 5000
-        locRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(locRequest);
@@ -111,12 +111,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void startLocationUpdates() {
+        if(updatesOn)
+            return;
+
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
             return;
         }
 
         fusedLocationClient.requestLocationUpdates(locRequest, locCallback, Looper.getMainLooper());
+        updatesOn = true;
     }
 
     @Override
@@ -126,6 +130,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // I used a 'for' just in case I add more permissions
         for (int grantResult : grantResults) {
             if (grantResult == PackageManager.PERMISSION_GRANTED)
+                startLocationUpdates();
                 return;
         }
 
@@ -134,8 +139,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private void stopLocationUpdates(){
         fusedLocationClient.removeLocationUpdates(locCallback);
+        updatesOn = false;
     }
 
+    private boolean updatesOn = false; // On some devices onResume is called after permission is given, while on others - not! So we check whether we have already turned updates on
     private boolean requestingLocationUpdates = false;
     @Override
     public void onResume() {
