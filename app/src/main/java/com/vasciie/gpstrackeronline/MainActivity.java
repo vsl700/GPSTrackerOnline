@@ -9,6 +9,7 @@ import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -40,6 +41,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        ConstraintLayout const1 = findViewById(R.id.const1);
+
+
+        Button locationsListBtn = findViewById(R.id.locsList);
+        locationsListBtn.setOnClickListener(view -> {});
 
         Button currentLocBtn = findViewById(R.id.currentLoc);
         currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
