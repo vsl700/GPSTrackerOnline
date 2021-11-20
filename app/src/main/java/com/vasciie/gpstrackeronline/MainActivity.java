@@ -45,12 +45,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_main);
 
         if (savedInstanceState == null) {
+            ButtonsFragment.main = this;
+            LocationsListFragment.main = this;
+
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
                     .add(R.id.mapView, SupportMapFragment.class, null)
                     .commit();
 
-            ButtonsFragment.main = this;
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
                     .add(R.id.fragmentContainerView, ButtonsFragment.class, null)
@@ -168,11 +170,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         gMap = googleMap;
     }
 
-    public void createButtonsFragmentBtns(View v){
+    public void createButtonsFragmentGUI(View v){
         Button locationsListBtn = v.findViewById(R.id.locsList);
-        locationsListBtn.setOnClickListener(view -> {});
+        locationsListBtn.setOnClickListener(view -> {
+            getSupportFragmentManager().beginTransaction()
+                    .setReorderingAllowed(true)
+                    .replace(R.id.fragmentContainerView, LocationsListFragment.class, null)
+                    .commit();
+        });
 
         Button currentLocBtn = v.findViewById(R.id.currentLoc);
+        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
+    }
+
+    public void createLocationsListFragmentGUI(View v){
+        Button goBackListBtn = v.findViewById(R.id.goBackList);
+        goBackListBtn.setOnClickListener(view -> getSupportFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                .commit());
+
+        Button currentLocBtn = v.findViewById(R.id.currentLoc2);
         currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
     }
 

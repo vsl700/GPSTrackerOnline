@@ -10,25 +10,23 @@ import android.view.ViewGroup;
 
 /**
  * A simple {@link Fragment} subclass.
- * Use the {@link ButtonsFragment#newInstance} factory method to
+ * Use the {@link LocationsListFragment#newInstance} factory method to
  * create an instance of this fragment.
  */
-public class ButtonsFragment extends Fragment {
+public class LocationsListFragment extends Fragment {
 
     // TODO: Rename parameter arguments, choose names that match
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
 
-    public static MainActivity main;
-
     // TODO: Rename and change types of parameters
     private String mParam1;
     private String mParam2;
 
+    public static MainActivity main;
 
-
-    public ButtonsFragment() {
+    public LocationsListFragment() {
         // Required empty public constructor
     }
 
@@ -38,11 +36,11 @@ public class ButtonsFragment extends Fragment {
      *
      * @param param1 Parameter 1.
      * @param param2 Parameter 2.
-     * @return A new instance of fragment ButtonsFragment.
+     * @return A new instance of fragment LocationsListFragment.
      */
     // TODO: Rename and change types and number of parameters
-    public static ButtonsFragment newInstance(String param1, String param2) {
-        ButtonsFragment fragment = new ButtonsFragment();
+    public static LocationsListFragment newInstance(String param1, String param2) {
+        LocationsListFragment fragment = new LocationsListFragment();
         Bundle args = new Bundle();
         args.putString(ARG_PARAM1, param1);
         args.putString(ARG_PARAM2, param2);
@@ -62,8 +60,8 @@ public class ButtonsFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_buttons, container, false);
-        main.createButtonsFragmentGUI(v);
+        View v = inflater.inflate(R.layout.fragment_locations_list, container, false);
+        main.createLocationsListFragmentGUI(v);
 
         // Inflate the layout for this fragment
         return v;
