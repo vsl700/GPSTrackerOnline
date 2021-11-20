@@ -16,38 +16,17 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/const1" />
+        app:layout_constraintTop_toBottomOf="@id/fragmentContainerView" />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/const1"
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/fragmentContainerView"
+        android:name="com.vasciie.gpstrackeronline.ButtonsFragment"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:visibility="visible"
         app:layout_constraintBottom_toTopOf="@+id/mapView"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
-
-        <Button
-            android:id="@+id/currentLoc"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/current_loc_btn"
-            app:layout_constraintEnd_toStartOf="@+id/locsList"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <Button
-            android:id="@+id/locsList"
-            style="?android:attr/buttonBarButtonStyle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="@string/locations_list_btn"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@id/currentLoc"
-            app:layout_constraintTop_toTopOf="parent" />
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        app:layout_constraintTop_toTopOf="parent"
+        tools:layout="@layout/fragment_buttons" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

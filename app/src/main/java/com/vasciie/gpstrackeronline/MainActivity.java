@@ -5,12 +5,14 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
+import android.view.View;
 import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -42,26 +44,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ConstraintLayout const1 = findViewById(R.id.const1);
-
-
-        Button locationsListBtn = findViewById(R.id.locsList);
-        locationsListBtn.setOnClickListener(view -> {});
-
-        Button currentLocBtn = findViewById(R.id.currentLoc);
-        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
-
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
                     .add(R.id.mapView, SupportMapFragment.class, null)
                     .commit();
+
+            ButtonsFragment.main = this;
+            getSupportFragmentManager().beginTransaction()
+                    .setReorderingAllowed(true)
+                    .add(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                    .commit();
         }
 
         thisActivity = this;
-        getSupportFragmentManager().addFragmentOnAttachListener((fragmentManager, fragment) ->
-                ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView))
-                        .getMapAsync(thisActivity));
+        getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         createLocationRequest();
@@ -169,5 +166,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         gMap = googleMap;
+    }
+
+    public void createButtonsFragmentBtns(View v){
+        Button locationsListBtn = v.findViewById(R.id.locsList);
+        locationsListBtn.setOnClickListener(view -> {});
+
+        Button currentLocBtn = v.findViewById(R.id.currentLoc);
+        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
+    }
+
+    private void onAttachFragment(FragmentManager fragmentManager, Fragment fragment) {
+        if(fragment instanceof SupportMapFragment){
+            ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView))
+                    .getMapAsync(thisActivity);
+        }
     }
 }
