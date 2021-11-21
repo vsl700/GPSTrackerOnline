@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -20,6 +21,7 @@ public class ButtonsFragment extends Fragment {
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
 
+    // The access to the activity functions
     public static MainActivity main;
 
     // TODO: Rename and change types of parameters
@@ -63,9 +65,18 @@ public class ButtonsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_buttons, container, false);
-        main.createButtonsFragmentGUI(v);
 
-        // Inflate the layout for this fragment
+        Button locationsListBtn = v.findViewById(R.id.locsList);
+        locationsListBtn.setOnClickListener(view -> {
+            main.getSupportFragmentManager().beginTransaction()
+                    .setReorderingAllowed(true)
+                    .replace(R.id.fragmentContainerView, LocationsListFragment.class, null)
+                    .commit();
+        });
+
+        Button currentLocBtn = v.findViewById(R.id.currentLoc);
+        currentLocBtn.setOnClickListener(view -> main.moveMapCamera(false));
+
         return v;
     }
 }

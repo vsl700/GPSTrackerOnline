@@ -5,8 +5,6 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
-import android.view.View;
-import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,6 +29,12 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Random;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap gMap;
@@ -39,10 +43,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LocationCallback locCallback;
     private Marker currentMarker;
 
+    public LinkedList<String> capTimes;
+    public LinkedList<Double> latitudes, longitudes;
+    public LinkedList<Integer> images;
+
+    // For indexing the app's database image numbers with the real app picture IDs (held in class R)
+    public HashMap<Integer, Integer> imageIds;
+
+    private static final Random r = new Random();
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        createImageIds();
+
+        capTimes = new LinkedList<>();
+        latitudes = new LinkedList<>();
+        longitudes = new LinkedList<>();
+        images = new LinkedList<>();
 
         if (savedInstanceState == null) {
             ButtonsFragment.main = this;
@@ -77,13 +98,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 currentMarker = gMap.addMarker(new MarkerOptions().position(current)
                         .title("You are here").draggable(false));
 
+                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
+                Date date = new Date(System.currentTimeMillis());
+                int imageIndex;
+                do{
+                    // To make it more colorful we prevent from choosing the same color as the
+                    // previous one
+                    imageIndex = r.nextInt(imageIds.size());
+                }while (images.size() > 0 && imageIndex == images.getLast());
+
+                capTimes.add(formatter.format(date));
+                images.add(imageIndex);
+                latitudes.add(loc.getLatitude());
+                longitudes.add(loc.getLongitude());
+
+
                 if(prevNull)
                     moveMapCamera(true);
             }
         };
     }
 
-    private void moveMapCamera(boolean zoom){
+    private void createImageIds(){
+        imageIds = new HashMap<>();
+
+        imageIds.put(0, R.drawable.loc_icon_blue);
+        imageIds.put(1, R.drawable.loc_icon_cyan);
+        //imageIds.put(2, R.drawable.loc_icon_gray);
+        imageIds.put(2, R.drawable.loc_icon_green);
+        imageIds.put(3, R.drawable.loc_icon_magenta);
+        imageIds.put(4, R.drawable.loc_icon_orange);
+        imageIds.put(5, R.drawable.loc_icon_red);
+    }
+
+    public void moveMapCamera(boolean zoom){
         if(currentMarker != null) {
             if(zoom)
                 gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
@@ -97,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
         locRequest.setFastestInterval(1000); //CHANGE TO 5000
+        locRequest.setSmallestDisplacement(2);
         locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
@@ -168,30 +217,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
         gMap = googleMap;
-    }
-
-    public void createButtonsFragmentGUI(View v){
-        Button locationsListBtn = v.findViewById(R.id.locsList);
-        locationsListBtn.setOnClickListener(view -> {
-            getSupportFragmentManager().beginTransaction()
-                    .setReorderingAllowed(true)
-                    .replace(R.id.fragmentContainerView, LocationsListFragment.class, null)
-                    .commit();
-        });
-
-        Button currentLocBtn = v.findViewById(R.id.currentLoc);
-        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
-    }
-
-    public void createLocationsListFragmentGUI(View v){
-        Button goBackListBtn = v.findViewById(R.id.goBackList);
-        goBackListBtn.setOnClickListener(view -> getSupportFragmentManager().beginTransaction()
-                .setReorderingAllowed(true)
-                .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
-                .commit());
-
-        Button currentLocBtn = v.findViewById(R.id.currentLoc2);
-        currentLocBtn.setOnClickListener(view -> moveMapCamera(false));
     }
 
     private void onAttachFragment(FragmentManager fragmentManager, Fragment fragment) {

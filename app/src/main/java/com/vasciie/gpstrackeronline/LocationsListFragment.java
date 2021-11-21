@@ -1,12 +1,16 @@
 package com.vasciie.gpstrackeronline;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -24,7 +28,12 @@ public class LocationsListFragment extends Fragment {
     private String mParam1;
     private String mParam2;
 
+    // The access to the activity functions and public application fields
+    // (like the location dataset)
     public static MainActivity main;
+
+    RecyclerView recyclerView;
+
 
     public LocationsListFragment() {
         // Required empty public constructor
@@ -57,13 +66,28 @@ public class LocationsListFragment extends Fragment {
         }
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_locations_list, container, false);
-        main.createLocationsListFragmentGUI(v);
 
-        // Inflate the layout for this fragment
+        Button goBackListBtn = v.findViewById(R.id.goBackList);
+        goBackListBtn.setOnClickListener(view -> main.getSupportFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                .commit());
+
+        Button currentLocBtn = v.findViewById(R.id.currentLoc2);
+        currentLocBtn.setOnClickListener(view -> main.moveMapCamera(false));
+
+
+        recyclerView = v.findViewById(R.id.recyclerView);
+
+        RecyclerViewAdapter rvAdapter = new RecyclerViewAdapter(main, main.images, main.capTimes);
+        recyclerView.setAdapter(rvAdapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(main));
+
         return v;
     }
 }
