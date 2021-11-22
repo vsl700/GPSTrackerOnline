@@ -24,6 +24,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -41,8 +42,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private OnMapReadyCallback thisActivity;
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locCallback;
-    private Marker currentMarker;
+    private Marker currentMarker, lookupMarker;
 
+    // Using LinkedList to improve performance while tracking
     public LinkedList<String> capTimes;
     public LinkedList<Double> latitudes, longitudes;
     public LinkedList<Integer> images;
@@ -131,12 +133,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         imageIds.put(5, R.drawable.loc_icon_red);
     }
 
+    public void lookupLocation(int index){
+        if(lookupMarker != null)
+            lookupMarker.remove();
+
+        LatLng lookUp = new LatLng(latitudes.get(index), longitudes.get(index));
+        lookupMarker = gMap.addMarker(new MarkerOptions().position(lookUp)
+                .icon(BitmapDescriptorFactory
+                        .defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                .title("A previous location").draggable(false));
+
+        moveMapCamera(false, lookupMarker);
+    }
+
     public void moveMapCamera(boolean zoom){
-        if(currentMarker != null) {
+        moveMapCamera(zoom, currentMarker);
+    }
+
+    private void moveMapCamera(boolean zoom, Marker marker){
+        if(marker != null) {
             if(zoom)
                 gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
 
-            gMap.moveCamera(CameraUpdateFactory.newLatLng(currentMarker.getPosition()));
+            gMap.moveCamera(CameraUpdateFactory.newLatLng(marker.getPosition()));
         }
     }
 
@@ -223,6 +242,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(fragment instanceof SupportMapFragment){
             ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView))
                     .getMapAsync(thisActivity);
+        }
+        else if(fragment instanceof ButtonsFragment){
+            if(lookupMarker != null) {
+                lookupMarker.remove();
+                lookupMarker = null;
+            }
         }
     }
 }

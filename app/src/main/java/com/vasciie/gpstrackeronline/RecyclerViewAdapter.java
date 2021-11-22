@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.LinkedList;
@@ -35,6 +36,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         holder.capTimeText.setText(capTimes.get(position));
         holder.image.setImageResource(main.imageIds.get(images.get(position)));
+        holder.main = main;
     }
 
     @Override
@@ -47,12 +49,31 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public TextView capTimeText;
         public ImageView image;
+        public MainActivity main;
+        public CardView cardView;
+
+        private static ViewHolder previouslyClicked;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
 
             capTimeText = itemView.findViewById(R.id.text_time);
             image = itemView.findViewById(R.id.imageView);
+
+            cardView = itemView.findViewById(R.id.list_item);
+            cardView.setOnClickListener(view -> {
+                cardView.setCardBackgroundColor(0x6EAFB8);
+                main.lookupLocation(getAdapterPosition());
+
+                if(previouslyClicked != null)
+                    previouslyClicked.deselect();
+
+                previouslyClicked = this;
+            });
+        }
+
+        public void deselect(){
+            cardView.setCardBackgroundColor(0xffffffff);
         }
     }
 
