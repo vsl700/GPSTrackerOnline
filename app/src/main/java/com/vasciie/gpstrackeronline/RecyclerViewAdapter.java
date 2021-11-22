@@ -62,11 +62,16 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
             cardView = itemView.findViewById(R.id.list_item);
             cardView.setOnClickListener(view -> {
+                if(previouslyClicked != null){
+                    if(previouslyClicked.equals(this)) {
+                        return;
+                    }else {
+                        previouslyClicked.deselect();
+                    }
+                }
+
                 cardView.setCardBackgroundColor(0x6EAFB8);
                 main.lookupLocation(getAdapterPosition());
-
-                if(previouslyClicked != null)
-                    previouslyClicked.deselect();
 
                 previouslyClicked = this;
             });
