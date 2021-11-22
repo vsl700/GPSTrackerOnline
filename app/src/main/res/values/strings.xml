@@ -4,4 +4,6 @@
     <string name="current_loc_btn">Current location</string>
     <string name="locations_list_btn">Locations list</string>
     <string name="go_back_list_btn">Hide list</string>
+    <string name="decoration_image_desc">Decoration Image</string>
+    <string name="time_taken_desc">Time taken</string>
 </resources>
