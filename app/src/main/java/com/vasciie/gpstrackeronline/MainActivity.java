@@ -107,7 +107,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // To make it more colorful we prevent from choosing the same color as the
                     // previous one
                     imageIndex = r.nextInt(imageIds.size());
-                }while (images.size() > 0 && imageIndex == images.getLast());
+                }while (images.size() >= 2 && images.lastIndexOf(imageIndex) >= images.size() - 2
+                        || images.size() == 1 && images.getLast() == imageIndex);
 
                 capTimes.add(formatter.format(date));
                 images.add(imageIndex);
