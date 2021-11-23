@@ -30,6 +30,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
 
+import java.security.InvalidKeyException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -98,6 +99,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
                 LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
                 currentMarker = gMap.addMarker(new MarkerOptions().position(current)
+                        .icon(BitmapDescriptorFactory
+                                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                         .title("You are here").draggable(false));
 
                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
@@ -126,22 +129,32 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         imageIds = new HashMap<>();
 
         imageIds.put(0, R.drawable.loc_icon_blue);
-        imageIds.put(1, R.drawable.loc_icon_cyan);
+        //imageIds.put(1, R.drawable.loc_icon_cyan);
         //imageIds.put(2, R.drawable.loc_icon_gray);
-        imageIds.put(2, R.drawable.loc_icon_green);
-        imageIds.put(3, R.drawable.loc_icon_magenta);
-        imageIds.put(4, R.drawable.loc_icon_orange);
-        imageIds.put(5, R.drawable.loc_icon_red);
+        imageIds.put(1, R.drawable.loc_icon_green);
+        imageIds.put(2, R.drawable.loc_icon_magenta);
+        imageIds.put(3, R.drawable.loc_icon_orange);
+        imageIds.put(4, R.drawable.loc_icon_red);
     }
 
     public void lookupLocation(int index){
         if(lookupMarker != null)
             lookupMarker.remove();
 
+        float hue = 0;
+        switch(images.get(index)){
+            case 0: hue = BitmapDescriptorFactory.HUE_BLUE; break;
+            //case 1: hue = BitmapDescriptorFactory.HUE_CYAN; break;
+            case 1: hue = BitmapDescriptorFactory.HUE_GREEN; break;
+            case 2: hue = BitmapDescriptorFactory.HUE_MAGENTA; break;
+            case 3: hue = BitmapDescriptorFactory.HUE_ORANGE; break;
+            case 4: hue = BitmapDescriptorFactory.HUE_RED; break;
+        }
+
         LatLng lookUp = new LatLng(latitudes.get(index), longitudes.get(index));
         lookupMarker = gMap.addMarker(new MarkerOptions().position(lookUp)
                 .icon(BitmapDescriptorFactory
-                        .defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                        .defaultMarker(hue))
                 .title("A previous location").draggable(false));
 
         moveMapCamera(false, lookupMarker);

@@ -1,5 +1,6 @@
 package com.vasciie.gpstrackeronline;
 
+import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,6 +53,10 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
         public MainActivity main;
         public CardView cardView;
 
+        // I set the selection color that way so that I can easily set the color
+        // through the layout designer, and after memorizing the color I remove it
+        private ColorStateList selectionColor;
+
         private static ViewHolder previouslyClicked;
 
         public ViewHolder(@NonNull View itemView) {
@@ -61,7 +66,11 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
             image = itemView.findViewById(R.id.imageView);
 
             cardView = itemView.findViewById(R.id.list_item);
+            selectionColor = cardView.getCardBackgroundColor();
+            deselect(); // Make it with normal color (when not selected)
             cardView.setOnClickListener(view -> {
+                main.lookupLocation(getAdapterPosition());
+
                 if(previouslyClicked != null){
                     if(previouslyClicked.equals(this)) {
                         return;
@@ -70,8 +79,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
                     }
                 }
 
-                cardView.setCardBackgroundColor(0x6EAFB8);
-                main.lookupLocation(getAdapterPosition());
+                cardView.setCardBackgroundColor(selectionColor);
 
                 previouslyClicked = this;
             });

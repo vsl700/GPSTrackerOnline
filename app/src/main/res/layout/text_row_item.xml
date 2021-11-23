@@ -9,6 +9,7 @@
         android:id="@+id/list_item"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        app:cardBackgroundColor="#8381B3"
         app:contentPaddingBottom="10dp"
         app:contentPaddingTop="10dp"
         app:layout_constraintEnd_toEndOf="parent"
