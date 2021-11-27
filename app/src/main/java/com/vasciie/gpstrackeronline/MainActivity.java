@@ -129,8 +129,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         imageIds = new HashMap<>();
 
         imageIds.put(0, R.drawable.loc_icon_blue);
-        //imageIds.put(1, R.drawable.loc_icon_cyan);
-        //imageIds.put(2, R.drawable.loc_icon_gray);
         imageIds.put(1, R.drawable.loc_icon_green);
         imageIds.put(2, R.drawable.loc_icon_magenta);
         imageIds.put(3, R.drawable.loc_icon_orange);
@@ -177,7 +175,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void createLocationRequest() {
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
-        locRequest.setFastestInterval(1000); //CHANGE TO 5000
+        locRequest.setFastestInterval(5000); //TODO: CHANGE TO 5000
         locRequest.setSmallestDisplacement(2);
         locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
