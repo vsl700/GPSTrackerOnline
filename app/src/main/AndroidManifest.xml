@@ -13,6 +13,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GPSTrackerOnline"
         android:fullBackupContent="true">
+        <service android:name=".services.LocationService"
+            tools:ignore="MissingClass" />
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyBj0dL42YYAWUACSkQ4ZHUhPoRuuPdcBB8"/>
         <activity
             android:name=".MainActivity"
