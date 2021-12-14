@@ -1,11 +1,15 @@
 package com.vasciie.gpstrackeronline;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -33,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private Marker currentMarker, lookupMarker;
 
-    private Intent locService;
+    public static Intent locService;
 
     // Using LinkedList to improve performance while tracking
     public LinkedList<String> capTimes;
@@ -45,11 +49,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private static final Random r = new Random();
 
+    public static MainActivity currentMainActivity;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        currentMainActivity = this;
 
         createImageIds();
 
@@ -59,9 +67,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         images = new LinkedList<>();
 
         if (savedInstanceState == null) {
-            ButtonsFragment.main = this;
-            LocationsListFragment.main = this;
-
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
                     .add(R.id.mapView, SupportMapFragment.class, null)
@@ -77,9 +82,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
-        LocationService.main = this;
-        locService = new Intent(this, LocationService.class);
-        startService(locService);
+        if(locService == null) {
+            locService = new Intent(this, LocationService.class);
+            startLocationService();
+        }
     }
 
     public void locationUpdated(LocationResult locResult){
@@ -166,25 +172,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // I used a 'for' just in case I add more permissions
         for (int grantResult : grantResults) {
             if (grantResult == PackageManager.PERMISSION_GRANTED)
-                startService(locService);
+                startLocationService();
                 return;
         }
 
         System.exit(0);
     }
 
+    private boolean startLocServiceInvoked = false;
+    private void startLocationService(){
+        if(!startLocServiceInvoked)
+            startService(locService);
+
+        startLocServiceInvoked = true;
+    }
+
+
     @Override
     public void onResume() {
         super.onResume();
 
-        startService(locService);
+        startLocationService();
     }
 
     @Override
     public void onPause(){
         super.onPause();
 
-        stopService(locService);
+        /*if(!LocationService.isCallerTracking)
+            stopService(locService);*/
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        System.out.println("MainActivity destroyed");
     }
 
     @Override
@@ -202,6 +225,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 lookupMarker.remove();
                 lookupMarker = null;
             }
+        }
+    }
+
+
+    public static class NotificationReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(MainActivity.currentMainActivity.isDestroyed()){
+                Intent main = new Intent(context, MainActivity.class);
+                main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(main);
+            }
+        }
+    }
+
+    public static class QuitButtonNotificationReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            context.stopService(MainActivity.locService);
+            System.exit(0);
         }
     }
 }
