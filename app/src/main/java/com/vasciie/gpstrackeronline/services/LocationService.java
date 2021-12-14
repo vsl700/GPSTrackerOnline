@@ -97,6 +97,8 @@ public class LocationService extends Service {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        main = MainActivity.currentMainActivity;
+
         if(!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;

@@ -40,12 +40,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static Intent locService;
 
     // Using LinkedList to improve performance while tracking
-    public LinkedList<String> capTimes;
-    public LinkedList<Double> latitudes, longitudes;
-    public LinkedList<Integer> images;
+    public static LinkedList<String> capTimes;
+    public static LinkedList<Double> latitudes, longitudes;
+    public static LinkedList<Integer> images;
 
     // For indexing the app's database image numbers with the real app picture IDs (held in class R)
-    public HashMap<Integer, Integer> imageIds;
+    public static HashMap<Integer, Integer> imageIds;
 
     private static final Random r = new Random();
 
@@ -57,14 +57,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        if(currentMainActivity == null) { // If that's the first time we start the activity
+            createImageIds();
+
+            capTimes = new LinkedList<>();
+            latitudes = new LinkedList<>();
+            longitudes = new LinkedList<>();
+            images = new LinkedList<>();
+
+            locService = new Intent(this, LocationService.class);
+            startLocationService();
+        }
+
         currentMainActivity = this;
-
-        createImageIds();
-
-        capTimes = new LinkedList<>();
-        latitudes = new LinkedList<>();
-        longitudes = new LinkedList<>();
-        images = new LinkedList<>();
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
@@ -79,13 +85,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
-
-
-
-        if(locService == null) {
-            locService = new Intent(this, LocationService.class);
-            startLocationService();
-        }
     }
 
     public void locationUpdated(LocationResult locResult){
