@@ -55,7 +55,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
         // I set the selection color that way so that I can easily set the color
         // through the layout designer, and after memorizing the color I remove it
-        private ColorStateList selectionColor;
+        private final ColorStateList selectionColor;
 
         private static ViewHolder previouslyClicked;
 
