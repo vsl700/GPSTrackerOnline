@@ -36,7 +36,7 @@ public class LocationsListFragment extends Fragment {
 
 
     public LocationsListFragment() {
-        // Required empty public constructor
+        main = MainActivity.currentMainActivity;
     }
 
     /**

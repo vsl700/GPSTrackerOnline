@@ -31,7 +31,7 @@ public class ButtonsFragment extends Fragment {
 
 
     public ButtonsFragment() {
-        // Required empty public constructor
+        main = MainActivity.currentMainActivity;
     }
 
     /**

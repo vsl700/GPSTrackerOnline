@@ -1,25 +1,20 @@
 package com.vasciie.gpstrackeronline;
 
-import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -28,9 +23,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.Task;
+import com.vasciie.gpstrackeronline.services.LocationService;
 
-import java.security.InvalidKeyException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -40,20 +34,22 @@ import java.util.Random;
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap gMap;
-    private OnMapReadyCallback thisActivity;
-    private FusedLocationProviderClient fusedLocationClient;
-    private LocationCallback locCallback;
+
     private Marker currentMarker, lookupMarker;
 
+    public static Intent locService;
+
     // Using LinkedList to improve performance while tracking
-    public LinkedList<String> capTimes;
-    public LinkedList<Double> latitudes, longitudes;
-    public LinkedList<Integer> images;
+    public static LinkedList<String> capTimes;
+    public static LinkedList<Double> latitudes, longitudes;
+    public static LinkedList<Integer> images;
 
     // For indexing the app's database image numbers with the real app picture IDs (held in class R)
-    public HashMap<Integer, Integer> imageIds;
+    public static HashMap<Integer, Integer> imageIds;
 
     private static final Random r = new Random();
+
+    public static MainActivity currentMainActivity;
 
 
     @Override
@@ -61,17 +57,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        createImageIds();
 
-        capTimes = new LinkedList<>();
-        latitudes = new LinkedList<>();
-        longitudes = new LinkedList<>();
-        images = new LinkedList<>();
+        if(currentMainActivity == null) { // If that's the first time we start the activity
+            createImageIds();
+
+            capTimes = new LinkedList<>();
+            latitudes = new LinkedList<>();
+            longitudes = new LinkedList<>();
+            images = new LinkedList<>();
+
+            locService = new Intent(this, LocationService.class);
+            startLocationService();
+        }
+
+        currentMainActivity = this;
 
         if (savedInstanceState == null) {
-            ButtonsFragment.main = this;
-            LocationsListFragment.main = this;
-
             getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
                     .add(R.id.mapView, SupportMapFragment.class, null)
@@ -83,46 +84,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .commit();
         }
 
-        thisActivity = this;
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
+    }
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        createLocationRequest();
+    public void locationUpdated(LocationResult locResult){
+        boolean prevNull = currentMarker == null;
+        if(!prevNull)
+            currentMarker.remove();
 
-        locCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locResult) {
-                boolean prevNull = currentMarker == null;
-                if(!prevNull)
-                    currentMarker.remove();
+        Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
+        LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
+        currentMarker = gMap.addMarker(new MarkerOptions().position(current)
+                .icon(BitmapDescriptorFactory
+                        .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
+                .title("You are here").draggable(false));
 
-                Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
-                LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
-                currentMarker = gMap.addMarker(new MarkerOptions().position(current)
-                        .icon(BitmapDescriptorFactory
-                                .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-                        .title("You are here").draggable(false));
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
+        Date date = new Date(System.currentTimeMillis());
+        int imageIndex;
+        do{
+            // To make it more colorful we prevent from choosing the same color as the
+            // previous one
+            imageIndex = r.nextInt(imageIds.size());
+        }while (images.size() >= 2 && images.lastIndexOf(imageIndex) >= images.size() - 2
+                || images.size() == 1 && images.getLast() == imageIndex);
 
-                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
-                Date date = new Date(System.currentTimeMillis());
-                int imageIndex;
-                do{
-                    // To make it more colorful we prevent from choosing the same color as the
-                    // previous one
-                    imageIndex = r.nextInt(imageIds.size());
-                }while (images.size() >= 2 && images.lastIndexOf(imageIndex) >= images.size() - 2
-                        || images.size() == 1 && images.getLast() == imageIndex);
-
-                capTimes.add(formatter.format(date));
-                images.add(imageIndex);
-                latitudes.add(loc.getLatitude());
-                longitudes.add(loc.getLongitude());
+        capTimes.add(formatter.format(date));
+        images.add(imageIndex);
+        latitudes.add(loc.getLatitude());
+        longitudes.add(loc.getLongitude());
 
 
-                if(prevNull)
-                    moveMapCamera(true);
-            }
-        };
+        if(prevNull)
+            moveMapCamera(true);
     }
 
     private void createImageIds(){
@@ -142,7 +136,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         float hue = 0;
         switch(images.get(index)){
             case 0: hue = BitmapDescriptorFactory.HUE_BLUE; break;
-            //case 1: hue = BitmapDescriptorFactory.HUE_CYAN; break;
             case 1: hue = BitmapDescriptorFactory.HUE_GREEN; break;
             case 2: hue = BitmapDescriptorFactory.HUE_MAGENTA; break;
             case 3: hue = BitmapDescriptorFactory.HUE_ORANGE; break;
@@ -171,44 +164,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private LocationRequest locRequest;
-    protected void createLocationRequest() {
-        locRequest = LocationRequest.create();
-        locRequest.setInterval(10000);
-        locRequest.setFastestInterval(5000); //TODO: CHANGE TO 5000
-        locRequest.setSmallestDisplacement(2);
-        locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
-                .addLocationRequest(locRequest);
-
-        SettingsClient client = LocationServices.getSettingsClient(this);
-        Task<LocationSettingsResponse> task =
-            client.checkLocationSettings(builder.build());
-        task.addOnSuccessListener(this, locationSettingsResponse -> {
-            // All location settings are satisfied. The client can initialize
-            // location requests here.
-
-            System.out.println("Success");
-
-            requestingLocationUpdates = true;
-            startLocationUpdates();
-        });
-    }
-
-    private void startLocationUpdates() {
-        if(updatesOn)
-            return;
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
-            return;
-        }
-
-        fusedLocationClient.requestLocationUpdates(locRequest, locCallback, Looper.getMainLooper());
-        updatesOn = true;
-    }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -216,33 +171,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // I used a 'for' just in case I add more permissions
         for (int grantResult : grantResults) {
             if (grantResult == PackageManager.PERMISSION_GRANTED)
-                startLocationUpdates();
+                startLocationService();
                 return;
         }
 
         System.exit(0);
     }
 
-    private void stopLocationUpdates(){
-        fusedLocationClient.removeLocationUpdates(locCallback);
-        updatesOn = false;
+    private boolean startLocServiceInvoked = false;
+    private void startLocationService(){
+        if(!startLocServiceInvoked)
+            startService(locService);
+
+        startLocServiceInvoked = true;
     }
 
-    private boolean updatesOn = false; // On some devices onResume is called after permission is given, while on others - not! So we check whether we have already turned updates on
-    private boolean requestingLocationUpdates = false;
+
     @Override
     public void onResume() {
         super.onResume();
 
-        if(requestingLocationUpdates)
-            startLocationUpdates();
+        startLocationService();
     }
 
     @Override
     public void onPause(){
         super.onPause();
 
-        stopLocationUpdates();
+        /*if(!LocationService.isCallerTracking)
+            stopService(locService);*/
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        System.out.println("MainActivity destroyed");
     }
 
     @Override
@@ -253,13 +217,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void onAttachFragment(FragmentManager fragmentManager, Fragment fragment) {
         if(fragment instanceof SupportMapFragment){
             ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.mapView))
-                    .getMapAsync(thisActivity);
+                    .getMapAsync(this);
         }
         else if(fragment instanceof ButtonsFragment){
             if(lookupMarker != null) {
                 lookupMarker.remove();
                 lookupMarker = null;
             }
+        }
+    }
+
+
+    public static class NotificationReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(MainActivity.currentMainActivity.isDestroyed()){
+                Intent main = new Intent(context, MainActivity.class);
+                main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(main);
+            }
+        }
+    }
+
+    public static class QuitButtonNotificationReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            context.stopService(MainActivity.locService);
+            System.exit(0);
         }
     }
 }
