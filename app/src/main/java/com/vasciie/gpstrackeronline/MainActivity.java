@@ -168,6 +168,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
     }
 
+    public static void saveAllLocations(){
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        // A very efficient way to go through multiple linked lists at a time
+        while (latitudes.iterator().hasNext()){
+            ContentValues values = new ContentValues();
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, latitudes.iterator().next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, longitudes.iterator().next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, images.iterator().next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, capTimes.iterator().next());
+
+            db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
+        }
+    }
+
     public void locationUpdated(Location loc){
         boolean prevNull = currentMarker == null;
         if(!prevNull)
@@ -310,6 +325,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         public void onReceive(Context context, Intent intent) {
             context.stopService(MainActivity.locService);
+            dbHelper.close();
             System.exit(0);
         }
     }

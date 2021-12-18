@@ -6,6 +6,8 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import androidx.annotation.Nullable;
 
+import com.vasciie.gpstrackeronline.MainActivity;
+
 public class FeedReaderDbHelper extends SQLiteOpenHelper {
 
     public static final int DATABASE_VERSION = 1;
@@ -16,6 +18,8 @@ public class FeedReaderDbHelper extends SQLiteOpenHelper {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
+    // Either this or the next method might be invoked when needed (schema change, etc) only on
+    // attempt to get a writable/readable database instance (getWritableDatabase()/getReadableDatabase())
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(FeedReaderContract.FeedLoggedTarget.SQL_CREATE_ENTRIES);
@@ -28,7 +32,11 @@ public class FeedReaderDbHelper extends SQLiteOpenHelper {
         db.execSQL(FeedReaderContract.FeedLoggedTarget.SQL_DELETE_ENTRIES);
         db.execSQL(FeedReaderContract.FeedLoggedUser.SQL_DELETE_ENTRIES);
         db.execSQL(FeedReaderContract.FeedLocations.SQL_DELETE_ENTRIES);
+
         onCreate(db);
+
+        // TODO: Invoke a method to save the current user/target account as well
+        MainActivity.saveAllLocations();
     }
 
     @Override
