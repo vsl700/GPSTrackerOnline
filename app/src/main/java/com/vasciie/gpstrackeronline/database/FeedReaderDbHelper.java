@@ -19,12 +19,14 @@ public class FeedReaderDbHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(FeedReaderContract.FeedLoggedTarget.SQL_CREATE_ENTRIES);
+        db.execSQL(FeedReaderContract.FeedLoggedUser.SQL_CREATE_ENTRIES);
         db.execSQL(FeedReaderContract.FeedLocations.SQL_CREATE_ENTRIES);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL(FeedReaderContract.FeedLoggedTarget.SQL_DELETE_ENTRIES);
+        db.execSQL(FeedReaderContract.FeedLoggedUser.SQL_DELETE_ENTRIES);
         db.execSQL(FeedReaderContract.FeedLocations.SQL_DELETE_ENTRIES);
         onCreate(db);
     }

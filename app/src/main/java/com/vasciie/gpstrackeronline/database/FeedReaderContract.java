@@ -16,6 +16,17 @@ public final class FeedReaderContract {
                 "DROP TABLE IF EXISTS " + TABLE_NAME;
     }
 
+    public static class FeedLoggedUser implements BaseColumns {
+        public static final String TABLE_NAME = "LoggedUser";
+        public static final String COLUMN_NAME_USERNAME = "Username";
+
+        public static final String SQL_CREATE_ENTRIES = "CREATE TABLE IF NOT EXISTS " + TABLE_NAME + " (" +
+                COLUMN_NAME_USERNAME + " VARCHAR(30) PRIMARY KEY);";
+
+        public static final String SQL_DELETE_ENTRIES =
+                "DROP TABLE IF EXISTS " + TABLE_NAME;
+    }
+
     public static class FeedLocations implements BaseColumns {
         public static final String TABLE_NAME = "Locations";
         public static final String COLUMN_NAME_LAT = "Latitude";
@@ -28,7 +39,7 @@ public final class FeedReaderContract {
                 COLUMN_NAME_LAT + " DOUBLE," +
                 COLUMN_NAME_LONG + " DOUBLE," +
                 COLUMN_NAME_MARKER_COLOR + " INT," +
-                COLUMN_NAME_TIME_TAKEN + " TEXT);";
+                COLUMN_NAME_TIME_TAKEN + " VARCHAR(30));";
 
         public static final String SQL_DELETE_ENTRIES =
                 "DROP TABLE IF EXISTS " + TABLE_NAME;
