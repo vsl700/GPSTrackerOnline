@@ -1,20 +1,20 @@
 package com.vasciie.gpstrackeronline;
 
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
-import android.os.Build;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -23,6 +23,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.vasciie.gpstrackeronline.database.FeedReaderContract;
+import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.LocationService;
 
 import java.text.SimpleDateFormat;
@@ -43,6 +45,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static LinkedList<String> capTimes;
     public static LinkedList<Double> latitudes, longitudes;
     public static LinkedList<Integer> images;
+
+    private static FeedReaderDbHelper dbHelper;
 
     // For indexing the app's database image numbers with the real app picture IDs (held in class R)
     public static HashMap<Integer, Integer> imageIds;
@@ -66,6 +70,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
 
+            dbHelper = new FeedReaderDbHelper(this);
+            readLocationsFromDB();
+
             locService = new Intent(this, LocationService.class);
             startLocationService();
         }
@@ -87,32 +94,90 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
     }
 
-    public void locationUpdated(LocationResult locResult){
+    private void readLocationsFromDB(){
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        // Define a projection that specifies which columns from the database
+        // you will actually use after this query.
+        String[] projection = {
+                FeedReaderContract.FeedLocations.COLUMN_NAME_LAT,
+                FeedReaderContract.FeedLocations.COLUMN_NAME_LONG,
+                FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR,
+                FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN
+        };
+
+        Cursor cursor = db.query(
+                FeedReaderContract.FeedLocations.TABLE_NAME,   // The table to query
+                projection,             // The array of columns to return (pass null to get all)
+                null,              // The columns for the WHERE clause
+                null,          // The values for the WHERE clause
+                null,                   // don't group the rows
+                null,                   // don't filter by row groups
+                null               // don't sort
+        );
+
+        while(cursor.moveToNext()) {
+            double lat = cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT));
+            double lng = cursor.getDouble(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG));
+            int color = cursor.getInt(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR));
+            String capTime = cursor.getString(
+                    cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN));
+
+            latitudes.add(lat);
+            longitudes.add(lng);
+            images.add(color);
+            capTimes.add(capTime);
+        }
+        cursor.close();
+    }
+
+    public void saveNewLocationToDB(Location loc){
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
+        Date date = new Date(System.currentTimeMillis());
+        String dateStr = formatter.format(date);
+
+        int imageIndex;
+        do{
+            // To make it more colorful we prevent from choosing the same color as
+            // one of the previous twos
+            imageIndex = r.nextInt(imageIds.size());
+        }while (images.size() >= 2 && images.lastIndexOf(imageIndex) >= images.size() - 2
+                || images.size() == 1 && images.getLast() == imageIndex);
+
+
+        capTimes.add(dateStr);
+        images.add(imageIndex);
+        latitudes.add(loc.getLatitude());
+        longitudes.add(loc.getLongitude());
+
+
+        // Gets the data repository in write mode
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        // Create a new map of values, where column names are the keys
+        ContentValues values = new ContentValues();
+        values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, loc.getLatitude());
+        values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, loc.getLongitude());
+        values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, imageIndex);
+        values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, dateStr);
+
+        // Insert the new row (the method below returns the primary key value of the new row)
+        db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
+    }
+
+    public void locationUpdated(Location loc){
         boolean prevNull = currentMarker == null;
         if(!prevNull)
             currentMarker.remove();
 
-        Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
         LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
         currentMarker = gMap.addMarker(new MarkerOptions().position(current)
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
                 .title("You are here").draggable(false));
-
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
-        Date date = new Date(System.currentTimeMillis());
-        int imageIndex;
-        do{
-            // To make it more colorful we prevent from choosing the same color as the
-            // previous one
-            imageIndex = r.nextInt(imageIds.size());
-        }while (images.size() >= 2 && images.lastIndexOf(imageIndex) >= images.size() - 2
-                || images.size() == 1 && images.getLast() == imageIndex);
-
-        capTimes.add(formatter.format(date));
-        images.add(imageIndex);
-        latitudes.add(loc.getLatitude());
-        longitudes.add(loc.getLongitude());
 
 
         if(prevNull)
@@ -171,7 +236,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // I used a 'for' just in case I add more permissions
         for (int grantResult : grantResults) {
             if (grantResult == PackageManager.PERMISSION_GRANTED)
-                startLocationService();
+                startService(locService);
                 return;
         }
 

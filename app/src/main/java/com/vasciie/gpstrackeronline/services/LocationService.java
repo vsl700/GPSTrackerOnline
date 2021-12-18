@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -86,9 +87,12 @@ public class LocationService extends Service {
         locCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locResult) {
-                if(!main.isDestroyed())
-                    main.locationUpdated(locResult);
+                Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
 
+                if(!main.isDestroyed())
+                    main.locationUpdated(loc);
+
+                main.saveNewLocationToDB(loc);
             }
         };
     }
