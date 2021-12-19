@@ -1,4 +1,4 @@
-package com.vasciie.gpstrackeronline;
+package com.vasciie.gpstrackeronline.fragments;
 
 import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
@@ -10,6 +10,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 
 import java.util.LinkedList;
 

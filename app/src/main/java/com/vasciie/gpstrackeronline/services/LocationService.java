@@ -34,7 +34,7 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
-import com.vasciie.gpstrackeronline.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
 
 public class LocationService extends Service {

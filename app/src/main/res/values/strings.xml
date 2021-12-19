@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GPS Tracker Online</string>
+    <string name="app_name">GPS Tracker-Online</string>
     <string name="map_desc">In this map you see where you currently are</string>
     <string name="current_loc_btn">Current location</string>
     <string name="locations_list_btn">Locations list</string>
@@ -12,4 +12,16 @@
     <string name="channel_name">locService</string>
     <string name="channel_description">The channel for the LocationService</string>
     <string name="quit_notification_button">QUIT</string>
+    <string name="gps_tracker_desc">An Android application built for the Phone Tracker-Online system</string>
+    <string name="login_way_desc">Choose the way you want to Log into the system:</string>
+    <string name="login_as_target">Login as Target</string>
+    <string name="login_as_caller">Login as Caller</string>
+    <string name="or_login_method_text">or</string>
+    <string name="enter_your_generated_code">Enter your generated code</string>
+    <string name="code_desc">Code:</string>
+    <string name="login">Login</string>
+    <string name="username">Username:</string>
+    <string name="password">Password:</string>
+    <string name="enter_your_username">Enter your username</string>
+    <string name="enter_your_password">Enter your password</string>
 </resources>

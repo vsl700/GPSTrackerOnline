@@ -1,4 +1,4 @@
-package com.vasciie.gpstrackeronline;
+package com.vasciie.gpstrackeronline.fragments;
 
 import android.os.Bundle;
 
@@ -8,6 +8,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+
+import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 
 /**
  * A simple {@link Fragment} subclass.

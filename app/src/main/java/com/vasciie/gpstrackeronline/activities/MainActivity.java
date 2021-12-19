@@ -1,4 +1,4 @@
-package com.vasciie.gpstrackeronline;
+package com.vasciie.gpstrackeronline.activities;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -23,6 +23,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
+import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.LocationService;
@@ -70,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
 
-            dbHelper = new FeedReaderDbHelper(this);
+            dbHelper = LoginWayActivity.dbHelper;
             readLocationsFromDB();
 
             locService = new Intent(this, LocationService.class);
