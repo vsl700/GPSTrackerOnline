@@ -28,12 +28,14 @@ public class LoginWayActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        if(MainActivity.currentMainActivity != null){
+            startMainActivity();
+            return;
+        }
+
         dbHelper = new FeedReaderDbHelper(this);
         if(checkLoggedIn()){
-            Intent intent = new Intent(this, MainActivity.class);
-            startActivity(intent);
-
-            finish();
+            startMainActivity();
             return;
         }
 
@@ -56,6 +58,13 @@ public class LoginWayActivity extends AppCompatActivity {
         loginTarget.setOnClickListener(view -> {
             startOtherActivity(LoginTargetActivity.class);
         });
+    }
+
+    private void startMainActivity(){
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+
+        finish();
     }
 
     private boolean checkLoggedIn(){
