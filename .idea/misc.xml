@@ -10,9 +10,15 @@
         <entry key="..\:/Users/Asus/AndroidStudioProjects/GPSTrackerOnline2/app/src/main/res/layout/fragment_locations_list.xml" value="0.29393115942028986" />
         <entry key="..\:/Users/Asus/AndroidStudioProjects/GPSTrackerOnline2/app/src/main/res/layout/notification_collapsed.xml" value="0.29393115942028986" />
         <entry key="..\:/Users/Asus/AndroidStudioProjects/GPSTrackerOnline2/app/src/main/res/layout/text_row_item.xml" value="0.29393115942028986" />
+        <entry key="..\:/Users/User/StudioProjects/GPSTrackerOnline/app/src/main/res/layout/activity_login_caller.xml" value="0.23541666666666666" />
+        <entry key="..\:/Users/User/StudioProjects/GPSTrackerOnline/app/src/main/res/layout/activity_login_target.xml" value="0.23541666666666666" />
+        <entry key="..\:/Users/User/StudioProjects/GPSTrackerOnline/app/src/main/res/layout/notification_collapsed.xml" value="0.23541666666666666" />
+        <entry key="..\:/Users/User/StudioProjects/GPSTrackerOnline/app/src/main/res/layout/text_row_item.xml" value="0.25416666666666665" />
+        <entry key="..\:/Users/User/StudioProjects/GPSTrackerOnline/app/src/main/res/menu/actionbar_menu.xml" value="0.25416666666666665" />
       </map>
     </option>
   </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="Android Studio default JDK" project-jdk-type="JavaSDK">
     <output url="file://$PROJECT_DIR$/build/classes" />
   </component>

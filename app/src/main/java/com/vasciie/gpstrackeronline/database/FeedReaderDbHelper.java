@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import androidx.annotation.Nullable;
 
-import com.vasciie.gpstrackeronline.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 
 public class FeedReaderDbHelper extends SQLiteOpenHelper {
 

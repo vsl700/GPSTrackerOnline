@@ -1,4 +1,4 @@
-package com.vasciie.gpstrackeronline;
+package com.vasciie.gpstrackeronline.activities;
 
 import android.content.BroadcastReceiver;
 import android.content.ContentValues;
@@ -9,6 +9,8 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,6 +25,8 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
+import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.LocationService;
@@ -70,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
 
-            dbHelper = new FeedReaderDbHelper(this);
+            dbHelper = LoginWayActivity.dbHelper;
             readLocationsFromDB();
 
             locService = new Intent(this, LocationService.class);
@@ -255,7 +259,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return;
         }
 
-        System.exit(0);
+        quitApplication(this);
     }
 
     private boolean startLocServiceInvoked = false;
@@ -307,6 +311,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void logout(){
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
+        db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
+        db.delete(FeedReaderContract.FeedLocations.TABLE_NAME, null, null);
+
+        capTimes.clear();
+        images.clear();
+        latitudes.clear();
+        longitudes.clear();
+
+        stopService(locService);
+
+        Intent intent = new Intent(this, LoginWayActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private static void quitApplication(Context context){
+        context.stopService(MainActivity.locService);
+        dbHelper.close();
+        System.exit(0);
+    }
+
+    // create an action bar button
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.actionbar_menu, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    // handle button activities
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.menu_quit_btn) {
+            quitApplication(this);
+        }
+        else if(id == R.id.menu_logout_btn){
+            logout();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
 
     public static class NotificationReceiver extends BroadcastReceiver {
 
@@ -317,16 +367,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 context.startActivity(main);
             }
-        }
-    }
-
-    public static class QuitButtonNotificationReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            context.stopService(MainActivity.locService);
-            dbHelper.close();
-            System.exit(0);
         }
     }
 }

@@ -34,7 +34,7 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
-import com.vasciie.gpstrackeronline.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
 
 public class LocationService extends Service {
@@ -131,9 +131,6 @@ public class LocationService extends Service {
             }
 
             RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_collapsed);
-
-            Intent quitClickIntent = new Intent(this, MainActivity.QuitButtonNotificationReceiver.class);
-            remoteViews.setOnClickPendingIntent(R.id.imageButton, PendingIntent.getBroadcast(this, 0, quitClickIntent, 0));
 
             Intent clickIntent = new Intent(this, MainActivity.NotificationReceiver.class);
             remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, 0));
