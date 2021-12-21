@@ -35,7 +35,7 @@ public class LoginTargetActivity extends AppCompatActivity {
     }
 
     private boolean login(){
-        if(code.getText().equals(""))
+        if(code.getText().toString().equals(""))
             return false;
 
         // Gets the data repository in write mode

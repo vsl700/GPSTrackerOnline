@@ -38,7 +38,7 @@ public class LoginCallerActivity extends AppCompatActivity {
     }
 
     private boolean login(){
-        if(username.getText().equals("") || password.getText().equals(""))
+        if(username.getText().toString().equals("") || password.getText().toString().equals(""))
             return false;
 
         // Gets the data repository in write mode
