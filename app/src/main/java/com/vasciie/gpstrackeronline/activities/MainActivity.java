@@ -311,6 +311,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void logout(){
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
+        db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
+        db.delete(FeedReaderContract.FeedLocations.TABLE_NAME, null, null);
+
+        capTimes.clear();
+        images.clear();
+        latitudes.clear();
+        longitudes.clear();
+
+        stopService(locService);
+
+        Intent intent = new Intent(this, LoginWayActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
     private static void quitApplication(Context context){
         context.stopService(MainActivity.locService);
         dbHelper.close();
@@ -332,6 +350,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (id == R.id.menu_quit_btn) {
             quitApplication(this);
         }
+        else if(id == R.id.menu_logout_btn){
+            logout();
+        }
+
         return super.onOptionsItemSelected(item);
     }
 

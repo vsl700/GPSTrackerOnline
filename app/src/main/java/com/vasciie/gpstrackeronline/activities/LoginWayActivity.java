@@ -28,12 +28,9 @@ public class LoginWayActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        if(MainActivity.currentMainActivity != null){
-            startMainActivity();
-            return;
-        }
+        if(dbHelper == null)
+            dbHelper = new FeedReaderDbHelper(this);
 
-        dbHelper = new FeedReaderDbHelper(this);
         if(checkLoggedIn()){
             startMainActivity();
             return;

@@ -6,4 +6,9 @@
         android:title=""
         app:showAsAction="always"
         android:icon="@drawable/quit" />
+    <item
+        android:id="@+id/menu_logout_btn"
+        android:title=""
+        app:showAsAction="always"
+        android:icon="@drawable/logout" />
 </menu>
