@@ -16,6 +16,8 @@ import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 
 public class LoginTargetActivity extends AppCompatActivity {
 
+    private TextView code;
+
     public static Activity currentLoginTargetActivity;
 
     @Override
@@ -25,29 +27,37 @@ public class LoginTargetActivity extends AppCompatActivity {
 
         currentLoginTargetActivity = this;
 
-        TextView code = findViewById(R.id.textInput_Code);
+        code = findViewById(R.id.textInput_Code);
+        code.setOnEditorActionListener((textView, i, keyEvent) -> login());
 
         Button login = findViewById(R.id.login_target_btn);
-        login.setOnClickListener(view -> {
-            // Gets the data repository in write mode
-            SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
+        login.setOnClickListener(view -> login());
+    }
 
-            // Create a new map of values, where column names are the keys
-            ContentValues values = new ContentValues();
-            values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code.getText().toString());
+    private boolean login(){
+        if(code.getText().equals(""))
+            return false;
 
-            // Insert the new row (the method below returns the primary key value of the new row)
-            db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
+        // Gets the data repository in write mode
+        SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
 
-            Intent intent = new Intent(this, MainActivity.class);
-            startActivity(intent);
+        // Create a new map of values, where column names are the keys
+        ContentValues values = new ContentValues();
+        values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code.getText().toString());
 
-            LoginWayActivity.currentLoginWayActivity.finish();
-            if(LoginCallerActivity.currentLoginCallerActivity != null)
-                LoginCallerActivity.currentLoginCallerActivity.finish();
+        // Insert the new row (the method below returns the primary key value of the new row)
+        db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
 
-            finish();
-        });
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+
+        LoginWayActivity.currentLoginWayActivity.finish();
+        if(LoginCallerActivity.currentLoginCallerActivity != null)
+            LoginCallerActivity.currentLoginCallerActivity.finish();
+
+        finish();
+
+        return true; // TODO: Use these for online validation
     }
 
     @Override
