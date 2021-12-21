@@ -132,9 +132,6 @@ public class LocationService extends Service {
 
             RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_collapsed);
 
-            Intent quitClickIntent = new Intent(this, MainActivity.QuitButtonNotificationReceiver.class);
-            remoteViews.setOnClickPendingIntent(R.id.imageButton, PendingIntent.getBroadcast(this, 0, quitClickIntent, 0));
-
             Intent clickIntent = new Intent(this, MainActivity.NotificationReceiver.class);
             remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, 0));
 

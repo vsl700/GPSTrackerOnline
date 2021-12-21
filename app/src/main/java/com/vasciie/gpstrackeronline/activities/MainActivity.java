@@ -369,12 +369,4 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
     }
-
-    public static class QuitButtonNotificationReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            MainActivity.quitApplication(context);
-        }
-    }
 }
