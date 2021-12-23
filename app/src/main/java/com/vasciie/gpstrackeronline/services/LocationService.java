@@ -224,6 +224,7 @@ public class LocationService extends Service {
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
         locRequest.setFastestInterval(3000);
+        locRequest.setSmallestDisplacement(2);
         locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()

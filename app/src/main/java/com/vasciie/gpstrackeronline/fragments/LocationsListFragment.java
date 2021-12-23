@@ -76,20 +76,27 @@ public class LocationsListFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_locations_list, container, false);
 
         Button goBackListBtn = v.findViewById(R.id.goBackList);
-        goBackListBtn.setOnClickListener(view -> main.getSupportFragmentManager().beginTransaction()
-                .setReorderingAllowed(true)
-                .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
-                .commit());
+        goBackListBtn.setOnClickListener(view -> {
+            main.getSupportFragmentManager().beginTransaction()
+                    .setReorderingAllowed(true)
+                    .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                    .commit();
+
+            main.removeLookupMarkers();
+        });
 
         Button currentLocBtn = v.findViewById(R.id.currentLoc2);
         currentLocBtn.setOnClickListener(view -> main.moveMapCamera(false));
 
 
-        recyclerView = v.findViewById(R.id.recyclerView);
+        if(recyclerView == null)
+            recyclerView = v.findViewById(R.id.recyclerView);
 
-        RecyclerViewAdapter rvAdapter = new RecyclerViewAdapter(main, main.images, main.capTimes);
+        RecyclerViewAdapter rvAdapter = new RecyclerViewAdapter(main, MainActivity.images, MainActivity.capTimes);
         recyclerView.setAdapter(rvAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(main));
+
+        main.setupLookupMarkers();
 
         return v;
     }

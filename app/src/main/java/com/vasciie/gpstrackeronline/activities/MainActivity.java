@@ -30,11 +30,13 @@ import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
+import com.vasciie.gpstrackeronline.fragments.LocationsListFragment;
 import com.vasciie.gpstrackeronline.services.LocationService;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Random;
@@ -44,6 +46,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap gMap;
 
     private Marker currentMarker, lookupMarker;
+    private Marker[] lookupMarkers;
 
     public static Intent locService;
 
@@ -86,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         currentMainActivity = this;
+
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
@@ -142,17 +146,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         cursor.close();
     }
 
-    private static Location prevLocation;
+    private boolean isDistanceLegalForSaving(double lat, double lng, Location loc){
+        LatLng oldCoords = new LatLng(lat, lng);
+        LatLng newCoords = new LatLng(loc.getLatitude(), loc.getLongitude());
+        double distMeters = SphericalUtil.computeDistanceBetween(oldCoords, newCoords);
+
+        return distMeters > 40;
+    }
+
     public void saveNewLocationToDB(Location loc){
-        if(prevLocation != null) {
-            LatLng oldCoords = new LatLng(prevLocation.getLatitude(), prevLocation.getLongitude());
-            LatLng newCoords = new LatLng(loc.getLatitude(), loc.getLongitude());
-            double distMeters = SphericalUtil.computeDistanceBetween(oldCoords, newCoords);
-            if(distMeters < 40)
+        if(latitudes.size() > 0){
+            if(!isDistanceLegalForSaving(latitudes.getLast(), longitudes.getLast(), loc))
                 return; // Don't save locations that are too close to each other
         }
 
-        prevLocation = loc;
         SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
         Date date = new Date(System.currentTimeMillis());
         String dateStr = formatter.format(date);
@@ -190,12 +197,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // A very efficient way to go through multiple linked lists at a time
-        while (latitudes.iterator().hasNext()){
+        Iterator<Double> iterator = latitudes.listIterator();
+        while (iterator.hasNext()){
             ContentValues values = new ContentValues();
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, latitudes.iterator().next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, longitudes.iterator().next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, images.iterator().next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, capTimes.iterator().next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, iterator.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, iterator.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, iterator.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, iterator.next());
 
             db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
         }
@@ -213,6 +221,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .title("You are here").draggable(false));
 
 
+        if(lookupMarkers != null)
+            setupLookupMarkers();
+
         if(prevNull)
             moveMapCamera(true);
     }
@@ -227,6 +238,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         imageIds.put(4, R.drawable.loc_icon_red);
     }
 
+    private int prevIndex = -1;
     public void lookupLocation(int index){
         if(lookupMarker != null)
             lookupMarker.remove();
@@ -244,9 +256,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         lookupMarker = gMap.addMarker(new MarkerOptions().position(lookUp)
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(hue))
-                .title("A previous location").draggable(false));
+                .title("A selected previous location").draggable(false));
+
+        lookupMarkers[index].setVisible(false);
+        if(prevIndex >= 0) {
+            lookupMarkers[prevIndex].setVisible(true);
+        }
+
+        prevIndex = index;
 
         moveMapCamera(false, lookupMarker);
+    }
+
+    public void setupLookupMarkers(){
+        removeLookupMarkers();
+        lookupMarkers = new Marker[latitudes.size()];
+        Iterator<Double> latIter = latitudes.listIterator();
+        Iterator<Double> longIter = longitudes.listIterator();
+        Iterator<String> capIter = capTimes.listIterator();
+        for(int i = 0; i < lookupMarkers.length; i++){
+            LatLng lookUp = new LatLng(latIter.next(), longIter.next());
+            lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
+                    .icon(BitmapDescriptorFactory
+                            .defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                    .title("A previous location (" + capIter.next() + ")").draggable(false));
+        }
+    }
+
+    public void removeLookupMarkers(){
+        if(lookupMarkers != null) {
+            for (Marker marker : lookupMarkers) {
+                marker.remove();
+            }
+        }
+
+        lookupMarkers = null;
     }
 
     public void moveMapCamera(boolean zoom){
