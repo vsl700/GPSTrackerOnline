@@ -25,6 +25,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.maps.android.SphericalUtil;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
@@ -35,6 +36,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Locale;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -44,6 +46,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Marker currentMarker, lookupMarker;
 
     public static Intent locService;
+
+    public static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
 
     // Using LinkedList to improve performance while tracking
     public static LinkedList<String> capTimes;
@@ -138,8 +142,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         cursor.close();
     }
 
+    private static Location prevLocation;
     public void saveNewLocationToDB(Location loc){
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd 'at' HH:mm:ss");
+        if(prevLocation != null) {
+            LatLng oldCoords = new LatLng(prevLocation.getLatitude(), prevLocation.getLongitude());
+            LatLng newCoords = new LatLng(loc.getLatitude(), loc.getLongitude());
+            double distMeters = SphericalUtil.computeDistanceBetween(oldCoords, newCoords);
+            if(distMeters < 40)
+                return; // Don't save locations that are too close to each other
+        }
+
+        prevLocation = loc;
+        SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
         Date date = new Date(System.currentTimeMillis());
         String dateStr = formatter.format(date);
 

@@ -37,6 +37,8 @@ import com.google.android.gms.tasks.Task;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
 
+import java.util.Random;
+
 public class LocationService extends Service {
     private Looper serviceLooper;
     private ServiceHandler serviceHandler;
@@ -59,27 +61,84 @@ public class LocationService extends Service {
 
 
     private static final class ServiceHandler extends Handler {
-        public ServiceHandler(Looper looper){
+        private final LocationService locService;
+        private final Random r;
+
+        public ServiceHandler(LocationService locService ,Looper looper){
             super(looper);
+
+            this.locService = locService;
+            r = new Random();
         }
 
         @Override
         public void handleMessage(@NonNull Message msg) {
             System.out.println("Service Loop");
+
+            // We don't make use of the LocationRequest's time interval properties due to the fact
+            // that some phones literally stop the updates when the app is closed and only the
+            // app service is working
+            while (true){
+                if(!isLocationActivelyUsed()){
+                    locService.stopLocationUpdates();
+
+                    try {
+                        int min = /*60*/ 10, max = /*210*/ 15;
+                        int time = r.nextInt((max - min) + 1) + min;
+                        int secs = 0;
+                        while(secs < time){
+                            if(isLocationActivelyUsed())
+                                break;
+
+                            Thread.sleep(1000);
+                            secs++;
+                        }
+
+                        if(isLocationActivelyUsed())
+                            continue;
+
+                        locReceived = false;
+                        locService.startLocationUpdates();
+
+                        int checks = 0;
+                        do {
+                            Thread.sleep(500);
+                            checks++;
+                        }while (!locReceived && checks < 14);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+
+        private boolean locReceived;
+        public void locationReceived(){
+            locReceived = true;
+        }
+
+        private boolean isLocationActivelyUsed(){
+            return !main.isDestroyed() || isCallerTracking;
+        }
+
     }
 
     @Override
     public void onCreate() {
         main = MainActivity.currentMainActivity;
 
-        // Due to working with the Internet we are using a separate thread for the service
         HandlerThread thread = new HandlerThread("ServiceStartArguments",
                 Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
 
         serviceLooper = thread.getLooper();
-        serviceHandler = new ServiceHandler(serviceLooper);
+        serviceHandler = new ServiceHandler(this, serviceLooper);
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         createLocationRequest();
@@ -93,6 +152,8 @@ public class LocationService extends Service {
                     main.locationUpdated(loc);
 
                 main.saveNewLocationToDB(loc);
+
+                serviceHandler.locationReceived();
             }
         };
     }
@@ -162,8 +223,7 @@ public class LocationService extends Service {
     public void createLocationRequest() {
         locRequest = LocationRequest.create();
         locRequest.setInterval(10000);
-        locRequest.setFastestInterval(5000); //TODO: CHANGE TO 5000
-        locRequest.setSmallestDisplacement(2);
+        locRequest.setFastestInterval(3000);
         locRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
 
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
@@ -184,7 +244,7 @@ public class LocationService extends Service {
     }
 
     public static boolean updatesOn = false;
-    public void startLocationUpdates() {
+    private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(main, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(main, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
             return;
@@ -194,7 +254,7 @@ public class LocationService extends Service {
         updatesOn = true;
     }
 
-    public void stopLocationUpdates(){
+    private void stopLocationUpdates(){
         fusedLocationClient.removeLocationUpdates(locCallback);
         updatesOn = false;
     }
