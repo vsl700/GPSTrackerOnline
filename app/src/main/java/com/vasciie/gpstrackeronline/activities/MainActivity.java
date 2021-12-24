@@ -26,11 +26,10 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.maps.android.SphericalUtil;
-import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
-import com.vasciie.gpstrackeronline.fragments.LocationsListFragment;
+import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.services.LocationService;
 
 import java.text.SimpleDateFormat;
@@ -50,7 +49,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public static Intent locService;
 
-    public static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
+    private static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
+    public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
 
     // Using LinkedList to improve performance while tracking
     public static LinkedList<String> capTimes;
@@ -160,7 +160,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return; // Don't save locations that are too close to each other
         }
 
-        SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
         Date date = new Date(System.currentTimeMillis());
         String dateStr = formatter.format(date);
 

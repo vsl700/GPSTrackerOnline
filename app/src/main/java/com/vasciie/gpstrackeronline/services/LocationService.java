@@ -83,7 +83,7 @@ public class LocationService extends Service {
                     locService.stopLocationUpdates();
 
                     try {
-                        int min = /*60*/ 10, max = /*210*/ 15;
+                        int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
                         int time = r.nextInt((max - min) + 1) + min;
                         int secs = 0;
                         while(secs < time){

@@ -14,6 +14,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 
+import java.text.ParseException;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.LinkedList;
 
 public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
@@ -38,8 +41,25 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.capTimeText.setText(capTimes.get(position));
-        holder.image.setImageResource(main.imageIds.get(images.get(position)));
+        try {
+            String capTime = capTimes.get(position);
+            Date date = MainActivity.formatter.parse(capTime);
+            Calendar dateCal = Calendar.getInstance();
+            dateCal.setTime(date);
+
+            Date today = new Date(System.currentTimeMillis());
+            Calendar todayCal = Calendar.getInstance();
+            todayCal.setTime(today);
+            if(todayCal.get(Calendar.YEAR) == dateCal.get(Calendar.YEAR) &&
+                    todayCal.get(Calendar.MONTH) == dateCal.get(Calendar.MONTH) &&
+                    todayCal.get(Calendar.DATE) == dateCal.get(Calendar.DATE))
+                holder.capTimeText.setText(String.format("today %s", capTime.substring(capTime.indexOf('a'))));
+            else holder.capTimeText.setText(capTime);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        holder.image.setImageResource(MainActivity.imageIds.get(images.get(position)));
         holder.main = main;
     }
 
