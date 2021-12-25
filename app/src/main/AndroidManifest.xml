@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -46,7 +47,15 @@
             android:screenOrientation="portrait"
             tools:ignore="LockedOrientationActivity">
         </activity>
-        <receiver android:name=".activities.MainActivity$NotificationReceiver"/>
+        <receiver android:name=".receivers.NotificationReceiver"/>
+        <receiver android:name=".receivers.SMSReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DATA_SMS_RECEIVED" />
+                <data android:scheme="sms" />
+                <data android:port="8901" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

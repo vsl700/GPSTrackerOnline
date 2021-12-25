@@ -24,9 +24,13 @@ public class LoginWayActivity extends AppCompatActivity {
     public static FeedReaderDbHelper dbHelper;
     public static Activity currentLoginWayActivity;
 
+    public static boolean loggedInTarget;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        loggedInTarget = false;
 
         if(dbHelper == null)
             dbHelper = new FeedReaderDbHelper(this);
@@ -85,6 +89,8 @@ public class LoginWayActivity extends AppCompatActivity {
         // If there's something written in there, it means a target is already logged in
         if(cursor.moveToNext()){
             cursor.close();
+
+            loggedInTarget = true;
             return true;
         }
 

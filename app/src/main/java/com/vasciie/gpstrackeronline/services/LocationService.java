@@ -36,6 +36,7 @@ import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
 import java.util.Random;
 
@@ -193,7 +194,7 @@ public class LocationService extends Service {
 
             RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_collapsed);
 
-            Intent clickIntent = new Intent(this, MainActivity.NotificationReceiver.class);
+            Intent clickIntent = new Intent(this, NotificationReceiver.class);
             remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, 0));
 
             Notification notification =
@@ -245,9 +246,10 @@ public class LocationService extends Service {
     }
 
     public static boolean updatesOn = false;
+    public static final int gpsAccessRequestCode = 14894;
     private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(main, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(main, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
+            ActivityCompat.requestPermissions(main, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, gpsAccessRequestCode);
             return;
         }
 

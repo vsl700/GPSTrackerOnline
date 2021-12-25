@@ -1,6 +1,6 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.content.BroadcastReceiver;
+import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -9,11 +9,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
+import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
@@ -309,14 +312,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        // I used a 'for' just in case I add more permissions
-        for (int grantResult : grantResults) {
-            if (grantResult == PackageManager.PERMISSION_GRANTED)
-                startService(locService);
-                return;
-        }
+        if(requestCode == LocationService.gpsAccessRequestCode) {
+            // I used a 'for' just in case I add more permissions
+            for (int grantResult : grantResults) {
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    startService(locService);
+                    return;
+                }
+            }
 
-        quitApplication(this);
+            quitApplication(this);
+        }
+        else if(requestCode == smsSendRequestCode){
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                takeActionOnSmsSendRequest();
+            }
+            else{
+                Toast.makeText(this, "SMS Send permission is required to send a message to the tracked phone!", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private boolean startLocServiceInvoked = false;
@@ -387,7 +401,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private static void quitApplication(Context context){
-        context.stopService(MainActivity.locService);
+        context.stopService(locService);
         dbHelper.close();
         System.exit(0);
     }
@@ -396,9 +410,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.actionbar_menu, menu);
+        if(LoginWayActivity.loggedInTarget)
+            menu.findItem(R.id.menu_sms_btn).setVisible(false);
         return super.onCreateOptionsMenu(menu);
     }
 
+    private static final String returnOnlineReq = "return-online";
+    private static final String returnSmsReq = "return-sms";
+    private static final int smsSendRequestCode = 39843;
     // handle button activities
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -410,20 +429,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else if(id == R.id.menu_logout_btn){
             logout();
         }
+        else if(id == R.id.menu_sms_btn){
+            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
+                ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
+            }
+            else takeActionOnSmsSendRequest();
+        }
 
         return super.onOptionsItemSelected(item);
     }
 
-
-    public static class NotificationReceiver extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(MainActivity.currentMainActivity.isDestroyed()){
-                Intent main = new Intent(context, MainActivity.class);
-                main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(main);
-            }
-        }
+    private void takeActionOnSmsSendRequest(){
+        String message = String.format("Phone Tracker-Online service request:\nCode:%s\n\n%s", 123456,
+                returnOnlineReq);
+        SmsManager smsManager = SmsManager.getDefault();
+        smsManager.sendTextMessage("+16505551212", null, message, null, null);
     }
+
 }
