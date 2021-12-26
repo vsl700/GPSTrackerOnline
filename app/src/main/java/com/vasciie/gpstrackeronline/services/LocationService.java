@@ -7,10 +7,14 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -21,7 +25,6 @@ import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
@@ -34,8 +37,8 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
-import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
 import java.util.Random;
@@ -43,9 +46,11 @@ import java.util.Random;
 public class LocationService extends Service {
     private Looper serviceLooper;
     private ServiceHandler serviceHandler;
+    private HandlerThread thread;
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locCallback;
+    private LocationManager lm;
 
     public LocationRequest locRequest;
 
@@ -65,7 +70,7 @@ public class LocationService extends Service {
         private final LocationService locService;
         private final Random r;
 
-        public ServiceHandler(LocationService locService ,Looper looper){
+        public ServiceHandler(LocationService locService, Looper looper) {
             super(looper);
 
             this.locService = locService;
@@ -79,23 +84,24 @@ public class LocationService extends Service {
             // We don't make use of the LocationRequest's time interval properties due to the fact
             // that some phones literally stop the updates when the app is closed and only the
             // app service is working
-            while (true){
-                if(!isLocationActivelyUsed()){
+            while (true) {
+                System.out.println("Cycling...");
+                if (!isLocationActivelyUsed()) {
                     locService.stopLocationUpdates();
 
                     try {
                         int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
                         int time = r.nextInt((max - min) + 1) + min;
                         int secs = 0;
-                        while(secs < time){
-                            if(isLocationActivelyUsed())
+                        while (secs < time) {
+                            if (isLocationActivelyUsed())
                                 break;
-
+                            System.out.println("Cycling...");
                             Thread.sleep(1000);
                             secs++;
                         }
 
-                        if(isLocationActivelyUsed())
+                        if (isLocationActivelyUsed())
                             continue;
 
                         locReceived = false;
@@ -105,9 +111,11 @@ public class LocationService extends Service {
                         do {
                             Thread.sleep(500);
                             checks++;
-                        }while (!locReceived && checks < 14);
+                            System.out.println("Cycling...");
+                        } while (!locReceived && checks < 14);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
+                        return;
                     }
                 }
 
@@ -115,52 +123,99 @@ public class LocationService extends Service {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    return;
                 }
             }
         }
 
         private boolean locReceived;
-        public void locationReceived(){
+
+        public void locationReceived() {
             locReceived = true;
         }
 
-        private boolean isLocationActivelyUsed(){
-            return !main.isDestroyed() || isCallerTracking;
+        private boolean isLocationActivelyUsed() {
+            return main != null && !main.isDestroyed() || isCallerTracking;
         }
 
     }
+
+    public static Location prevLoc;
 
     @Override
     public void onCreate() {
         main = MainActivity.currentMainActivity;
 
-        HandlerThread thread = new HandlerThread("ServiceStartArguments",
+        thread = new HandlerThread("ServiceStartArguments",
                 Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
 
         serviceLooper = thread.getLooper();
         serviceHandler = new ServiceHandler(this, serviceLooper);
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-        createLocationRequest();
+        lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        boolean gps_enabled = false;
+        boolean network_enabled = false;
+
+        try {
+            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        try {
+            network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        if (!gps_enabled && network_enabled) {
+            LocationListener locationListener = new LocationListener() {
+                public void onLocationChanged(Location location) {
+                    prevLoc = location;
+                    makeUseOfNewLoc();
+                }
+
+                public void onStatusChanged(String provider, int status, Bundle extras) {
+                }
+
+                public void onProviderEnabled(String provider) {
+                }
+
+                public void onProviderDisabled(String provider) {
+                }
+            };
+
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        }
+        else {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            createLocationRequest();
+        }
 
         locCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locResult) {
-                Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
-
-                if(!main.isDestroyed())
-                    main.locationUpdated(loc);
-
-                main.saveNewLocationToDB(loc);
-
-                serviceHandler.locationReceived();
+                prevLoc = locResult.getLocations().get(locResult.getLocations().size() - 1);
+                makeUseOfNewLoc();
             }
         };
     }
 
+    private void makeUseOfNewLoc(){
+        if(!main.isDestroyed())
+            main.locationUpdated(prevLoc);
+
+        main.saveNewLocationToDB(prevLoc);
+
+        serviceHandler.locationReceived();
+    }
+
     @SuppressLint("RemoteViewLayout")
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
@@ -219,6 +274,7 @@ public class LocationService extends Service {
     @Override
     public void onDestroy() {
         stopLocationUpdates();
+        thread.interrupt();
     }
 
     public void createLocationRequest() {

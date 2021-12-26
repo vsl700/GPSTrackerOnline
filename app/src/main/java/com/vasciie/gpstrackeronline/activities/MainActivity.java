@@ -56,9 +56,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
 
     // Using LinkedList to improve performance while tracking
-    public static LinkedList<String> capTimes;
-    public static LinkedList<Double> latitudes, longitudes;
-    public static LinkedList<Integer> images;
+    public static LinkedList<String> capTimes = new LinkedList<>();
+    public static LinkedList<Double> latitudes = new LinkedList<>(), longitudes = new LinkedList<>();
+    public static LinkedList<Integer> images = new LinkedList<>();
 
     private static FeedReaderDbHelper dbHelper;
 
@@ -75,6 +75,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if(LoginWayActivity.dbHelper == null) {
+            LoginWayActivity.dbHelper = new FeedReaderDbHelper(this);
+
+        }
+        dbHelper = LoginWayActivity.dbHelper;
+
+        if(!LocationService.updatesOn)
+            locService = new Intent(this, LocationService.class);
 
         if(currentMainActivity == null) { // If that's the first time we start the activity
             createImageIds();
@@ -84,10 +92,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
 
-            dbHelper = LoginWayActivity.dbHelper;
+
             readLocationsFromDB();
 
-            locService = new Intent(this, LocationService.class);
+
             startLocationService();
         }
 
@@ -109,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
     }
 
-    private void readLocationsFromDB(){
+    public static void readLocationsFromDB(){
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         // Define a projection that specifies which columns from the database
@@ -199,13 +207,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // A very efficient way to go through multiple linked lists at a time
-        Iterator<Double> iterator = latitudes.listIterator();
-        while (iterator.hasNext()){
+        Iterator<Double> iterator1 = latitudes.listIterator();
+        Iterator<Double> iterator2 = longitudes.listIterator();
+        Iterator<Integer> iterator3 = images.listIterator();
+        Iterator<String> iterator4 = capTimes.listIterator();
+        while (iterator1.hasNext()){
             ContentValues values = new ContentValues();
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, iterator.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, iterator1.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, iterator2.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, iterator3.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, iterator4.next());
 
             db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
         }
@@ -323,14 +334,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             quitApplication(this);
         }
-        else if(requestCode == smsSendRequestCode){
+        /*else if(requestCode == smsSendRequestCode){
             if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 takeActionOnSmsSendRequest();
             }
             else{
                 Toast.makeText(this, "SMS Send permission is required to send a message to the tracked phone!", Toast.LENGTH_LONG).show();
             }
-        }
+        }*/
     }
 
     private boolean startLocServiceInvoked = false;
@@ -403,7 +414,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static void quitApplication(Context context){
         context.stopService(locService);
         dbHelper.close();
-        System.exit(0);
+        LoginWayActivity.dbHelper = dbHelper = null;
+
+        currentMainActivity.finish();
     }
 
     // create an action bar button
@@ -415,9 +428,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onCreateOptionsMenu(menu);
     }
 
-    private static final String returnOnlineReq = "return-online";
-    private static final String returnSmsReq = "return-sms";
-    private static final int smsSendRequestCode = 39843;
+    //private static final int smsSendRequestCode = 39843;
     // handle button activities
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -430,18 +441,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             logout();
         }
         else if(id == R.id.menu_sms_btn){
-            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
+            /*if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
                 ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
             }
-            else takeActionOnSmsSendRequest();
+            else*/ takeActionOnSmsSendRequest();
         }
 
         return super.onOptionsItemSelected(item);
     }
 
+    public static final String systemName = "Phone Tracker-Online";
+    public static final String smsServiceRequest = "request";
+    public static final String smsServiceResponse = "response";
+    public static final String returnOnlineReq = "return-online";
+    public static final String returnSmsReq = "return-sms";
     private void takeActionOnSmsSendRequest(){
-        String message = String.format("Phone Tracker-Online service request:\nCode:%s\n\n%s", 123456,
-                returnOnlineReq);
+        String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, 123456,
+                returnOnlineReq, returnSmsReq);
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+16505551212", null, message, null, null);
     }
