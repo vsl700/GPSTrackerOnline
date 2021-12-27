@@ -7,10 +7,16 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -21,7 +27,6 @@ import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
@@ -34,19 +39,23 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
-import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.MainActivity;
+import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
 import java.util.Random;
 
 public class LocationService extends Service {
     private Looper serviceLooper;
     private ServiceHandler serviceHandler;
+    private HandlerThread thread;
 
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locCallback;
+    private LocationManager lm;
 
     public LocationRequest locRequest;
+    public LocationListener locationListener;
 
     // The access to the activity functions and public application fields
     public static MainActivity main;
@@ -64,7 +73,7 @@ public class LocationService extends Service {
         private final LocationService locService;
         private final Random r;
 
-        public ServiceHandler(LocationService locService ,Looper looper){
+        public ServiceHandler(LocationService locService, Looper looper) {
             super(looper);
 
             this.locService = locService;
@@ -78,35 +87,60 @@ public class LocationService extends Service {
             // We don't make use of the LocationRequest's time interval properties due to the fact
             // that some phones literally stop the updates when the app is closed and only the
             // app service is working
-            while (true){
-                if(!isLocationActivelyUsed()){
+            while (true) {
+                System.out.println("Cycling...");
+                if (!isLocationActivelyUsed()) {
                     locService.stopLocationUpdates();
+                    locService.stopLocationUpdatesInternetOnly();
 
                     try {
                         int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
                         int time = r.nextInt((max - min) + 1) + min;
                         int secs = 0;
-                        while(secs < time){
-                            if(isLocationActivelyUsed())
+                        while (secs < time) {
+                            if (isLocationActivelyUsed())
                                 break;
 
+                            if(updatesOn){
+                                locService.stopLocationUpdates();
+                                locService.stopLocationUpdatesInternetOnly();
+                            }
+
+                            System.out.println("Cycling...");
                             Thread.sleep(1000);
                             secs++;
                         }
 
-                        if(isLocationActivelyUsed())
+                        if (isLocationActivelyUsed())
                             continue;
 
                         locReceived = false;
-                        locService.startLocationUpdates();
+                        if(!locService.isGPSEnabled() && locService.isNetworkEnabled()) {
+                            locService.startLocationUpdatesInternetOnly();
+                        }
+                        else{
+                            locService.startLocationUpdates();
+                        }
 
                         int checks = 0;
                         do {
                             Thread.sleep(500);
                             checks++;
-                        }while (!locReceived && checks < 14);
+                            System.out.println("Cycling...");
+                        } while (!locReceived && checks < 14);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
+                        return;
+                    }
+                }
+                else{
+                    if(!locService.isGPSEnabled() && locService.isNetworkEnabled()){
+                        locService.stopLocationUpdates();
+                        locService.startLocationUpdatesInternetOnly();
+                    }
+                    else{
+                        locService.stopLocationUpdatesInternetOnly();
+                        locService.startLocationUpdates();
                     }
                 }
 
@@ -114,31 +148,57 @@ public class LocationService extends Service {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    return;
                 }
             }
         }
 
         private boolean locReceived;
-        public void locationReceived(){
+
+        public void locationReceived() {
             locReceived = true;
         }
 
-        private boolean isLocationActivelyUsed(){
-            return !main.isDestroyed() || isCallerTracking;
+        private boolean isLocationActivelyUsed() {
+            return main != null && !main.isDestroyed() || isCallerTracking;
         }
 
     }
 
+    public static Location prevLoc;
+
     @Override
     public void onCreate() {
+        alive = true;
+
         main = MainActivity.currentMainActivity;
 
-        HandlerThread thread = new HandlerThread("ServiceStartArguments",
+        thread = new HandlerThread("ServiceStartArguments",
                 Process.THREAD_PRIORITY_BACKGROUND);
         thread.start();
 
         serviceLooper = thread.getLooper();
         serviceHandler = new ServiceHandler(this, serviceLooper);
+
+        lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+
+        locationListener = new LocationListener() {
+            public void onLocationChanged(Location location) {
+                prevLoc = location;
+                makeUseOfNewLoc();
+            }
+
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+        };
+
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         createLocationRequest();
@@ -146,25 +206,44 @@ public class LocationService extends Service {
         locCallback = new LocationCallback() {
             @Override
             public void onLocationResult(@NonNull LocationResult locResult) {
-                Location loc = locResult.getLocations().get(locResult.getLocations().size() - 1);
-
-                if(!main.isDestroyed())
-                    main.locationUpdated(loc);
-
-                main.saveNewLocationToDB(loc);
-
-                serviceHandler.locationReceived();
+                prevLoc = locResult.getLocations().get(locResult.getLocations().size() - 1);
+                makeUseOfNewLoc();
             }
         };
     }
 
+    private boolean isGPSEnabled(){
+        try {
+            return lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private boolean isNetworkEnabled(){
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
+
+    private void makeUseOfNewLoc() {
+        if (!main.isDestroyed())
+            main.locationUpdated(prevLoc);
+
+        main.saveNewLocationToDB(prevLoc);
+
+        serviceHandler.locationReceived();
+    }
+
     @SuppressLint("RemoteViewLayout")
-    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
 
-        if(!updatesOn) {
+        if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
@@ -186,14 +265,13 @@ public class LocationService extends Service {
                 notificationManager.createNotificationChannel(channel);
 
                 channelId = channel.getId();
-            }
-            else{
+            } else {
                 channelId = "notification";
             }
 
             RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_collapsed);
 
-            Intent clickIntent = new Intent(this, MainActivity.NotificationReceiver.class);
+            Intent clickIntent = new Intent(this, NotificationReceiver.class);
             remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, 0));
 
             Notification notification =
@@ -210,14 +288,25 @@ public class LocationService extends Service {
             startForeground(12893, notification);
         }
 
-        startLocationUpdates();
+        if(isGPSEnabled())
+             startLocationUpdates();
+        else if(isNetworkEnabled())
+            startLocationUpdatesInternetOnly();
 
         return START_STICKY;
     }
 
+    public static boolean alive = false;
     @Override
     public void onDestroy() {
         stopLocationUpdates();
+        stopLocationUpdatesInternetOnly();
+        thread.interrupt();
+        thread.quit();
+
+        isCallerTracking = false;
+
+        alive = false;
     }
 
     public void createLocationRequest() {
@@ -245,19 +334,49 @@ public class LocationService extends Service {
     }
 
     public static boolean updatesOn = false;
+    public static final int gpsAccessRequestCode = 14894;
+
+    private static boolean gpsUpdatesOn = false;
     private void startLocationUpdates() {
+        if(gpsUpdatesOn)
+            return;
+
         if (ActivityCompat.checkSelfPermission(main, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(main, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, 14894);
+            ActivityCompat.requestPermissions(main, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, gpsAccessRequestCode);
             return;
         }
 
         fusedLocationClient.requestLocationUpdates(locRequest, locCallback, Looper.getMainLooper());
-        updatesOn = true;
+        updatesOn = gpsUpdatesOn = true;
     }
 
-    private void stopLocationUpdates(){
+    private static boolean internetUpdatesOn = false;
+    private void startLocationUpdatesInternetOnly(){
+        if(internetUpdatesOn)
+            return;
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        updatesOn = internetUpdatesOn = true;
+    }
+
+    private void stopLocationUpdates() {
+        if(!gpsUpdatesOn)
+            return;
+
         fusedLocationClient.removeLocationUpdates(locCallback);
-        updatesOn = false;
+        updatesOn = gpsUpdatesOn = false;
+    }
+
+    private void stopLocationUpdatesInternetOnly(){
+        if(!internetUpdatesOn)
+            return;
+
+        lm.removeUpdates(locationListener);
+        updatesOn = internetUpdatesOn = false;
     }
 
 }

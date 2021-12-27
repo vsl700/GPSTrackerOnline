@@ -48,6 +48,8 @@ public class LoginTargetActivity extends AppCompatActivity {
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
 
+        LoginWayActivity.loggedInTarget = true;
+
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
 

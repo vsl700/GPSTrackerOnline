@@ -1,6 +1,6 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.content.BroadcastReceiver;
+import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -9,11 +9,13 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.os.Bundle;
+import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
@@ -53,9 +55,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
 
     // Using LinkedList to improve performance while tracking
-    public static LinkedList<String> capTimes;
-    public static LinkedList<Double> latitudes, longitudes;
-    public static LinkedList<Integer> images;
+    public static LinkedList<String> capTimes = new LinkedList<>();
+    public static LinkedList<Double> latitudes = new LinkedList<>(), longitudes = new LinkedList<>();
+    public static LinkedList<Integer> images = new LinkedList<>();
 
     private static FeedReaderDbHelper dbHelper;
 
@@ -72,6 +74,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        initializeDB();
+
+        if(!LocationService.alive)
+            locService = new Intent(this, LocationService.class);
 
         if(currentMainActivity == null) { // If that's the first time we start the activity
             createImageIds();
@@ -81,10 +87,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
 
-            dbHelper = LoginWayActivity.dbHelper;
+
             readLocationsFromDB();
 
-            locService = new Intent(this, LocationService.class);
+
             startLocationService();
         }
 
@@ -106,7 +112,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
     }
 
-    private void readLocationsFromDB(){
+    private static void initializeDB(){
+        if(LoginWayActivity.dbHelper == null) {
+            LoginWayActivity.dbHelper = new FeedReaderDbHelper(MainActivity.currentMainActivity);
+        }
+        dbHelper = LoginWayActivity.dbHelper;
+    }
+
+    public static void readLocationsFromDB(){
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
         // Define a projection that specifies which columns from the database
@@ -196,24 +209,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // A very efficient way to go through multiple linked lists at a time
-        Iterator<Double> iterator = latitudes.listIterator();
-        while (iterator.hasNext()){
+        Iterator<Double> iterator1 = latitudes.listIterator();
+        Iterator<Double> iterator2 = longitudes.listIterator();
+        Iterator<Integer> iterator3 = images.listIterator();
+        Iterator<String> iterator4 = capTimes.listIterator();
+        while (iterator1.hasNext()){
             ContentValues values = new ContentValues();
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, iterator.next());
-            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, iterator.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LAT, iterator1.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_LONG, iterator2.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_MARKER_COLOR, iterator3.next());
+            values.put(FeedReaderContract.FeedLocations.COLUMN_NAME_TIME_TAKEN, iterator4.next());
 
             db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
         }
     }
 
     public void locationUpdated(Location loc){
+        LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
+        locationUpdated(current);
+    }
+
+    public void locationUpdated(LatLng current){
         boolean prevNull = currentMarker == null;
         if(!prevNull)
             currentMarker.remove();
 
-        LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
         currentMarker = gMap.addMarker(new MarkerOptions().position(current)
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
@@ -309,14 +329,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        // I used a 'for' just in case I add more permissions
-        for (int grantResult : grantResults) {
-            if (grantResult == PackageManager.PERMISSION_GRANTED)
-                startService(locService);
-                return;
-        }
+        if(requestCode == LocationService.gpsAccessRequestCode) {
+            // I used a 'for' just in case I add more permissions
+            for (int grantResult : grantResults) {
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    startService(locService);
+                    return;
+                }
+            }
 
-        quitApplication(this);
+            quitApplication(this);
+        }
+        /*else if(requestCode == smsSendRequestCode){
+            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                takeActionOnSmsSendRequest();
+            }
+            else{
+                Toast.makeText(this, "SMS Send permission is required to send a message to the tracked phone!", Toast.LENGTH_LONG).show();
+            }
+        }*/
     }
 
     private boolean startLocServiceInvoked = false;
@@ -387,18 +418,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private static void quitApplication(Context context){
-        context.stopService(MainActivity.locService);
+        context.stopService(locService);
         dbHelper.close();
-        System.exit(0);
+        LoginWayActivity.dbHelper = dbHelper = null;
+
+        currentMainActivity.finish();
     }
 
     // create an action bar button
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.actionbar_menu, menu);
+        if(LoginWayActivity.loggedInTarget)
+            menu.findItem(R.id.menu_sms_btn).setVisible(false);
         return super.onCreateOptionsMenu(menu);
     }
 
+    private static final int smsSendRequestCode = 39843;
     // handle button activities
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -410,20 +446,67 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else if(id == R.id.menu_logout_btn){
             logout();
         }
+        else if(id == R.id.menu_sms_btn){
+            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
+                ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
+            }
+            else takeActionOnSmsSendRequest();
+        }
 
         return super.onOptionsItemSelected(item);
     }
 
+    public static final String systemName = "Phone Tracker-Online";
+    public static final String smsServiceRequest = "request";
+    public static final String smsServiceResponse = "response";
+    public static final String returnOnlineReq = "return-online";
+    public static final String returnSmsReq = "return-sms";
+    private void takeActionOnSmsSendRequest(){
+        String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, 123456,
+                returnOnlineReq, returnSmsReq);
+        SmsManager smsManager = SmsManager.getDefault();
+        smsManager.sendTextMessage("+16505551212", null, message, null, null);
+    }
 
-    public static class NotificationReceiver extends BroadcastReceiver {
+    public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
+        String[] currentElements = currentLoc.split(";");
+        if(currentElements.length > 1) {
+            double currentLat = Double.parseDouble(currentElements[0]);
+            double currentLng = Double.parseDouble(currentElements[1]);
 
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(MainActivity.currentMainActivity.isDestroyed()){
-                Intent main = new Intent(context, MainActivity.class);
-                main.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(main);
-            }
+            MainActivity.currentMainActivity.locationUpdated(new LatLng(currentLat, currentLng));
+        }
+
+        String[] locsListArr = locsList.split("\n");
+        if(locsListArr[0].length() == 0)
+            return;
+
+        for(String loc : locsListArr){
+            String[] elements = loc.split(";");
+            double lat = Double.parseDouble(elements[0]);
+            double lng = Double.parseDouble(elements[1]);
+            int image = Integer.parseInt(elements[2]);
+            String capTime = elements[3];
+
+            if(capTimes.contains(capTime))
+                continue;
+
+            latitudes.add(lat);
+            longitudes.add(lng);
+            images.add(image);
+            capTimes.add(capTime);
+        }
+
+        boolean applicationOff = dbHelper == null;
+        if(applicationOff)
+            initializeDB();
+
+        saveAllLocations();
+
+        if(applicationOff){
+            dbHelper.close();
+            LoginWayActivity.dbHelper = dbHelper = null;
         }
     }
+
 }

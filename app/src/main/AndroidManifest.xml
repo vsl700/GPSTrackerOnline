@@ -3,9 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.vasciie.gpstrackeronline">
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -16,9 +20,12 @@
         android:fullBackupContent="true">
         <service
             android:name=".services.LocationService"
-            tools:ignore="MissingClass"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false" >
+            <intent-filter>
+                <action android:name=".services.LocationService" />
+            </intent-filter>
+        </service>
         <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyBj0dL42YYAWUACSkQ4ZHUhPoRuuPdcBB8"/>
         <activity
             android:name=".activities.MainActivity"
@@ -46,7 +53,14 @@
             android:screenOrientation="portrait"
             tools:ignore="LockedOrientationActivity">
         </activity>
-        <receiver android:name=".activities.MainActivity$NotificationReceiver"/>
+        <receiver android:name=".receivers.NotificationReceiver"/>
+        <receiver android:name=".receivers.SMSReceiver"
+            android:exported="true"
+            android:permission="android.permission.BROADCAST_SMS">
+            <intent-filter android:priority="2147483645">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

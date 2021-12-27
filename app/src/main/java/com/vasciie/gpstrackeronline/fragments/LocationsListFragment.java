@@ -35,7 +35,8 @@ public class LocationsListFragment extends Fragment {
     // (like the location dataset)
     public static MainActivity main;
 
-    RecyclerView recyclerView;
+    private RecyclerView recyclerView;
+    private RecyclerViewAdapter rvAdapter;
 
 
     public LocationsListFragment() {
@@ -92,12 +93,19 @@ public class LocationsListFragment extends Fragment {
         if(recyclerView == null)
             recyclerView = v.findViewById(R.id.recyclerView);
 
-        RecyclerViewAdapter rvAdapter = new RecyclerViewAdapter(main, MainActivity.images, MainActivity.capTimes);
+        rvAdapter = new RecyclerViewAdapter(main, MainActivity.images, MainActivity.capTimes);
         recyclerView.setAdapter(rvAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(main));
 
         main.setupLookupMarkers();
 
         return v;
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+
+        rvAdapter.onDestroy();
     }
 }

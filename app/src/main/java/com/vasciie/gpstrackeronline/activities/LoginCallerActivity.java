@@ -51,6 +51,8 @@ public class LoginCallerActivity extends AppCompatActivity {
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, values);
 
+        LoginWayActivity.loggedInCaller = true;
+
         Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
 

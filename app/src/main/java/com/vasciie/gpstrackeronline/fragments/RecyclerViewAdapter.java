@@ -68,7 +68,9 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
         return images.size();
     }
 
-
+    public void onDestroy(){
+        ViewHolder.previouslyClicked = null;
+    }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public TextView capTimeText;
