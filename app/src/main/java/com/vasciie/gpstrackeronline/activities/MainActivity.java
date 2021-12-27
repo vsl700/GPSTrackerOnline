@@ -74,10 +74,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        if(LoginWayActivity.dbHelper == null) {
-            LoginWayActivity.dbHelper = new FeedReaderDbHelper(this);
-        }
-        dbHelper = LoginWayActivity.dbHelper;
+        initializeDB();
 
         if(!LocationService.alive)
             locService = new Intent(this, LocationService.class);
@@ -113,6 +110,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
+    }
+
+    private static void initializeDB(){
+        if(LoginWayActivity.dbHelper == null) {
+            LoginWayActivity.dbHelper = new FeedReaderDbHelper(MainActivity.currentMainActivity);
+        }
+        dbHelper = LoginWayActivity.dbHelper;
     }
 
     public static void readLocationsFromDB(){
@@ -492,6 +496,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             images.add(image);
             capTimes.add(capTime);
         }
+
+        if(dbHelper == null)
+            initializeDB();
 
         saveAllLocations();
     }
