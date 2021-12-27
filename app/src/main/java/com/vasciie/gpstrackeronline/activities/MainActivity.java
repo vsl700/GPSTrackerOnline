@@ -497,10 +497,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             capTimes.add(capTime);
         }
 
-        if(dbHelper == null)
+        boolean applicationOff = dbHelper == null;
+        if(applicationOff)
             initializeDB();
 
         saveAllLocations();
+
+        if(applicationOff){
+            dbHelper.close();
+            LoginWayActivity.dbHelper = dbHelper = null;
+        }
     }
 
 }
