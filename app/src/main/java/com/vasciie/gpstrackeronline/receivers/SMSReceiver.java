@@ -139,11 +139,11 @@ public class SMSReceiver extends BroadcastReceiver {
                         }
                     } else if (returnSms) {
                         ExecutorService threadPool = Executors.newCachedThreadPool();
-                        boolean finalGps_enabled1 = gps_enabled;
+                        boolean finalGps_enabled = gps_enabled;
                         boolean finalNetwork_enabled = network_enabled;
-                        String finalFrom1 = from;
+                        String finalFrom = from;
                         Future<Boolean> futureTask = (Future<Boolean>) threadPool.submit(() -> {
-                            if(finalGps_enabled1 || finalNetwork_enabled) {
+                            if(finalGps_enabled || finalNetwork_enabled) {
                                 int timeout = 60;
                                 while (LocationService.prevLoc == null && timeout > 0) {
                                     try {
@@ -164,9 +164,9 @@ public class SMSReceiver extends BroadcastReceiver {
                             String locList = getLocationsDataList();
 
                             String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
-                                    locListTag, locList, finalGps_enabled1 || finalNetwork_enabled);
+                                    locListTag, locList, finalGps_enabled || finalNetwork_enabled);
                             SmsManager smsManager = SmsManager.getDefault();
-                            smsManager.sendTextMessage(finalFrom1, null, message, null, null);
+                            smsManager.sendTextMessage(finalFrom, null, message, null, null);
 
                             LocationService.isCallerTracking = false;
 
@@ -175,13 +175,13 @@ public class SMSReceiver extends BroadcastReceiver {
                     }
                 }
             } else if (data.contains(MainActivity.smsServiceResponse)) {
-                System.out.println(data.indexOf(locListTag));
-                System.out.println(data.indexOf(locListTag) + locListTag.length() + 1);
-                int x = data.lastIndexOf("\n\n\n");
+                int x = data.indexOf(locListTag) + locListTag.length() + 1;
                 System.out.println(x);
+                int y = Math.max(data.lastIndexOf("\n\n"), x);
+                System.out.println(y);
 
                 String currentStr = data.substring(data.indexOf(currentLocTag) + currentLocTag.length() + 1, data.indexOf(locListTag) - 2);
-                String locListStr = data.substring(data.indexOf(locListTag) + locListTag.length() + 1, x);
+                String locListStr = data.substring(x, y);
 
                 MainActivity.changeSearchedPhoneLocation(currentStr, locListStr);
 

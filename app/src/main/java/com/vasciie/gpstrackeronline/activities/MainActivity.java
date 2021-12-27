@@ -474,6 +474,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         String[] locsListArr = locsList.split("\n");
+        if(locsListArr[0].length() == 0)
+            return;
+
         for(String loc : locsListArr){
             String[] elements = loc.split(";");
             double lat = Double.parseDouble(elements[0]);
