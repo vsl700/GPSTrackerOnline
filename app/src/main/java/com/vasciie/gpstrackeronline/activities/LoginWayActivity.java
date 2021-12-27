@@ -13,7 +13,6 @@ import android.transition.Slide;
 import android.view.Gravity;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -27,7 +26,7 @@ import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 public class LoginWayActivity extends AppCompatActivity {
 
     public static FeedReaderDbHelper dbHelper;
-    public static Activity currentLoginWayActivity;
+    public static LoginWayActivity currentLoginWayActivity;
 
     public static boolean loggedInTarget, loggedInCaller;
 

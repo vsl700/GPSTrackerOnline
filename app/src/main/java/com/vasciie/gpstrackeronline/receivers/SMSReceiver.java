@@ -1,31 +1,39 @@
 package com.vasciie.gpstrackeronline.receivers;
 
+import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
-import android.net.Uri;
-import android.net.wifi.WifiManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
-import android.util.Log;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.LocationService;
 
-import java.util.Date;
 import java.util.Iterator;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class SMSReceiver extends BroadcastReceiver {
 
     private static final String currentLocTag = "Current:";
     private static final String locListTag = "Full List:";
-
+    private static final String unavailableTag = "Unavailable";
     @Override
     public void onReceive(Context context, Intent intent) {
         if (LoginWayActivity.dbHelper == null)
@@ -42,60 +50,75 @@ public class SMSReceiver extends BroadcastReceiver {
         if (bundle != null) {
             Object[] pdus = (Object[]) bundle.get("pdus");
             SmsMessage[] msgs = new SmsMessage[pdus.length];
+            String from = null;
+            StringBuilder dataSB = new StringBuilder();
 
             for (int i = 0; i < msgs.length; i++) {
                 msgs[i] = SmsMessage.createFromPdu((byte[]) pdus[i]);
-                String from = msgs[i].getOriginatingAddress();
-                String data = msgs[i].getDisplayMessageBody();
+                if(from == null)
+                    from = msgs[i].getOriginatingAddress();
+                dataSB.append(msgs[i].getDisplayMessageBody());
+            }
 
-                System.out.println(from);
-                System.out.println(data);
+            String data = dataSB.toString();
 
-                if (!data.contains(MainActivity.systemName))
-                    continue;
+            System.out.println(from);
+            System.out.println(data);
 
-                if (data.contains(MainActivity.smsServiceRequest)) {
-                    String sentCode = data.substring(data.indexOf(':', data.indexOf("Code:")) + 1, data.lastIndexOf("\n\n"));
-                    String actualCode = LoginWayActivity.getLoggedTargetCode() + "";
-                    if (sentCode.equals(actualCode)) { // To verify that the message is not a... prank
-                        LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
-                        boolean gps_enabled = false;
-                        boolean network_enabled = false;
+            if (!data.contains(MainActivity.systemName))
+                return;
 
-                        try {
-                            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
+            if (data.contains(MainActivity.smsServiceRequest)) {
+                String sentCode = data.substring(data.indexOf(':', data.indexOf("Code:")) + 1, data.lastIndexOf("\n\n"));
+                String actualCode = LoginWayActivity.getLoggedTargetCode() + "";
+                if (sentCode.equals(actualCode)) { // To verify that the message is not a... prank
+                    LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+                    ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                    boolean gps_enabled = false;
+                    boolean network_enabled;
 
-                        try {
-                            network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
+                    try {
+                        gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
 
-                        if (!LocationService.updatesOn) {
-                            Intent locService;
-                            MainActivity.locService = locService = new Intent(context, LocationService.class);
-                            LocationService.isCallerTracking = true;
+                    NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+                    network_enabled = activeNetworkInfo != null && activeNetworkInfo.isConnected();
 
-                            if(gps_enabled)
-                                LocationService.prevLoc = null;
+                    System.out.println("GPS: " + gps_enabled);
+                    System.out.println("Internet: " + network_enabled);
 
-                            context.startService(locService);
-                        }
+                    Intent locService;
+                    if (!LocationService.alive) {
+                        MainActivity.locService = locService = new Intent(context.getApplicationContext(), LocationService.class);
+                        LocationService.prevLoc = null;
+                    }
+                    else{
+                        locService = MainActivity.locService;
+                    }
 
-                        boolean returnOnline = data.contains(MainActivity.returnOnlineReq);
-                        boolean returnSms = data.contains(MainActivity.returnSmsReq);
-                        if (returnOnline && returnSms) {
-                            if (!network_enabled) {
-                                if(gps_enabled) {
-                                    while (LocationService.prevLoc == null) {
+                    context.startService(locService);
+                    LocationService.isCallerTracking = true;
+
+
+                    boolean returnOnline = data.contains(MainActivity.returnOnlineReq);
+                    boolean returnSms = data.contains(MainActivity.returnSmsReq);
+                    if (returnOnline && returnSms) {
+                        if (!network_enabled) {
+                            ExecutorService threadPool = Executors.newCachedThreadPool();
+                            boolean finalGps_enabled = gps_enabled;
+                            String finalFrom = from;
+                            Future<Boolean> futureTask = (Future<Boolean>) threadPool.submit(() -> {
+                                if (finalGps_enabled) {
+                                    int timeout = 60;
+                                    while (LocationService.prevLoc == null && timeout > 0) {
                                         try {
-                                            Thread.sleep(500);
+                                            Thread.sleep(1000);
+                                            timeout--;
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
-                                            return;
+                                            return false;
                                         }
                                     }
                                 }
@@ -105,35 +128,70 @@ public class SMSReceiver extends BroadcastReceiver {
                                 String locList = getLocationsDataList();
 
                                 String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
-                                        locListTag, locList, gps_enabled);
+                                        locListTag, locList, finalGps_enabled);
                                 SmsManager smsManager = SmsManager.getDefault();
-                                smsManager.sendTextMessage(from, null, message, null, null);
-                            }
-                        } else if (returnSms) {
-                            if(gps_enabled) {
-                                while (LocationService.prevLoc == null) {
+                                smsManager.sendTextMessage(finalFrom, null, message, null, null);
+
+                                LocationService.isCallerTracking = false;
+
+                                return true;
+                            });
+                        }
+                    } else if (returnSms) {
+                        ExecutorService threadPool = Executors.newCachedThreadPool();
+                        boolean finalGps_enabled1 = gps_enabled;
+                        boolean finalNetwork_enabled = network_enabled;
+                        String finalFrom1 = from;
+                        Future<Boolean> futureTask = (Future<Boolean>) threadPool.submit(() -> {
+                            if(finalGps_enabled1 || finalNetwork_enabled) {
+                                int timeout = 60;
+                                while (LocationService.prevLoc == null && timeout > 0) {
                                     try {
-                                        Thread.sleep(500);
+                                        Thread.sleep(1000);
+                                        timeout--;
                                     } catch (InterruptedException e) {
                                         e.printStackTrace();
-                                        return;
+                                        return false;
                                     }
                                 }
                             }
 
                             // Send SMS
-                            String currentLoc = LocationService.prevLoc.getLatitude() + ";" + LocationService.prevLoc.getLongitude();
+                            String currentLoc;
+                            if(LocationService.prevLoc == null)
+                                currentLoc = unavailableTag;
+                            else currentLoc = LocationService.prevLoc.getLatitude() + ";" + LocationService.prevLoc.getLongitude();
                             String locList = getLocationsDataList();
 
                             String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
-                                    locListTag, locList, gps_enabled);
+                                    locListTag, locList, finalGps_enabled1 || finalNetwork_enabled);
                             SmsManager smsManager = SmsManager.getDefault();
-                            smsManager.sendTextMessage(from, null, message, null, null);
-                        }
-                    }
-                } else if (data.contains(MainActivity.smsServiceResponse)) {
+                            smsManager.sendTextMessage(finalFrom1, null, message, null, null);
 
+                            LocationService.isCallerTracking = false;
+
+                            return true;
+                        });
+                    }
                 }
+            } else if (data.contains(MainActivity.smsServiceResponse)) {
+                System.out.println(data.indexOf(locListTag));
+                System.out.println(data.indexOf(locListTag) + locListTag.length() + 1);
+                int x = data.lastIndexOf("\n\n\n");
+                System.out.println(x);
+
+                String currentStr = data.substring(data.indexOf(currentLocTag) + currentLocTag.length() + 1, data.indexOf(locListTag) - 2);
+                String locListStr = data.substring(data.indexOf(locListTag) + locListTag.length() + 1, x);
+
+                MainActivity.changeSearchedPhoneLocation(currentStr, locListStr);
+
+                if(currentStr.contains(unavailableTag))
+                    Toast.makeText(context, "Current location couldn't be accessed! Services unavailable!", Toast.LENGTH_LONG).show();
+                else if (data.contains("false"))
+                    Toast.makeText(context, "Current location might be an old one! Location services are unavailable!", Toast.LENGTH_LONG).show();
+
+                if(locListStr.length() == 0)
+                    Toast.makeText(context, "No saved locations!", Toast.LENGTH_LONG).show();
             }
         }
     }

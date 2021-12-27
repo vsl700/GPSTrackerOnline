@@ -13,6 +13,8 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -98,6 +100,12 @@ public class LocationService extends Service {
                         while (secs < time) {
                             if (isLocationActivelyUsed())
                                 break;
+
+                            if(updatesOn){
+                                locService.stopLocationUpdates();
+                                locService.stopLocationUpdatesInternetOnly();
+                            }
+
                             System.out.println("Cycling...");
                             Thread.sleep(1000);
                             secs++;
@@ -215,13 +223,10 @@ public class LocationService extends Service {
     }
 
     private boolean isNetworkEnabled(){
-        try {
-            return lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        return false;
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
     private void makeUseOfNewLoc() {
@@ -284,7 +289,7 @@ public class LocationService extends Service {
         }
 
         if(isGPSEnabled())
-            startLocationUpdates();
+             startLocationUpdates();
         else if(isNetworkEnabled())
             startLocationUpdatesInternetOnly();
 
@@ -292,12 +297,14 @@ public class LocationService extends Service {
     }
 
     public static boolean alive = false;
-
     @Override
     public void onDestroy() {
         stopLocationUpdates();
         stopLocationUpdatesInternetOnly();
         thread.interrupt();
+        thread.quit();
+
+        isCallerTracking = false;
 
         alive = false;
     }

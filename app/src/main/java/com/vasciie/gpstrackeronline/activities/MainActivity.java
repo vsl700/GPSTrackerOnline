@@ -12,7 +12,6 @@ import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -222,11 +221,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void locationUpdated(Location loc){
+        LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
+        locationUpdated(current);
+    }
+
+    public void locationUpdated(LatLng current){
         boolean prevNull = currentMarker == null;
         if(!prevNull)
             currentMarker.remove();
 
-        LatLng current = new LatLng(loc.getLatitude(), loc.getLongitude());
         currentMarker = gMap.addMarker(new MarkerOptions().position(current)
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
@@ -427,7 +430,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onCreateOptionsMenu(menu);
     }
 
-    //private static final int smsSendRequestCode = 39843;
+    private static final int smsSendRequestCode = 39843;
     // handle button activities
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -440,10 +443,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             logout();
         }
         else if(id == R.id.menu_sms_btn){
-            /*if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
+            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
                 ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
             }
-            else*/ takeActionOnSmsSendRequest();
+            else takeActionOnSmsSendRequest();
         }
 
         return super.onOptionsItemSelected(item);
@@ -459,6 +462,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 returnOnlineReq, returnSmsReq);
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+16505551212", null, message, null, null);
+    }
+
+    public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
+        String[] currentElements = currentLoc.split(";");
+        if(currentElements.length > 1) {
+            double currentLat = Double.parseDouble(currentElements[0]);
+            double currentLng = Double.parseDouble(currentElements[1]);
+
+            MainActivity.currentMainActivity.locationUpdated(new LatLng(currentLat, currentLng));
+        }
+
+        String[] locsListArr = locsList.split("\n");
+        for(String loc : locsListArr){
+            String[] elements = loc.split(";");
+            double lat = Double.parseDouble(elements[0]);
+            double lng = Double.parseDouble(elements[1]);
+            int image = Integer.parseInt(elements[2]);
+            String capTime = elements[3];
+
+            if(capTimes.contains(capTime))
+                continue;
+
+            latitudes.add(lat);
+            longitudes.add(lng);
+            images.add(image);
+            capTimes.add(capTime);
+        }
+
+        saveAllLocations();
     }
 
 }
