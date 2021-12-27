@@ -53,6 +53,7 @@ public class LocationService extends Service {
     private LocationManager lm;
 
     public LocationRequest locRequest;
+    public LocationListener locationListener;
 
     // The access to the activity functions and public application fields
     public static MainActivity main;
@@ -88,6 +89,7 @@ public class LocationService extends Service {
                 System.out.println("Cycling...");
                 if (!isLocationActivelyUsed()) {
                     locService.stopLocationUpdates();
+                    locService.stopLocationUpdatesInternetOnly();
 
                     try {
                         int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
@@ -105,7 +107,12 @@ public class LocationService extends Service {
                             continue;
 
                         locReceived = false;
-                        locService.startLocationUpdates();
+                        if(!locService.isGPSEnabled() && locService.isNetworkEnabled()) {
+                            locService.startLocationUpdatesInternetOnly();
+                        }
+                        else{
+                            locService.startLocationUpdates();
+                        }
 
                         int checks = 0;
                         do {
@@ -116,6 +123,16 @@ public class LocationService extends Service {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         return;
+                    }
+                }
+                else{
+                    if(!locService.isGPSEnabled() && locService.isNetworkEnabled()){
+                        locService.stopLocationUpdates();
+                        locService.startLocationUpdatesInternetOnly();
+                    }
+                    else{
+                        locService.stopLocationUpdatesInternetOnly();
+                        locService.startLocationUpdates();
                     }
                 }
 
@@ -144,6 +161,8 @@ public class LocationService extends Service {
 
     @Override
     public void onCreate() {
+        alive = true;
+
         main = MainActivity.currentMainActivity;
 
         thread = new HandlerThread("ServiceStartArguments",
@@ -154,48 +173,27 @@ public class LocationService extends Service {
         serviceHandler = new ServiceHandler(this, serviceLooper);
 
         lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        boolean gps_enabled = false;
-        boolean network_enabled = false;
 
-        try {
-            gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
 
-        try {
-            network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
-        if (!gps_enabled && network_enabled) {
-            LocationListener locationListener = new LocationListener() {
-                public void onLocationChanged(Location location) {
-                    prevLoc = location;
-                    makeUseOfNewLoc();
-                }
-
-                public void onStatusChanged(String provider, int status, Bundle extras) {
-                }
-
-                public void onProviderEnabled(String provider) {
-                }
-
-                public void onProviderDisabled(String provider) {
-                }
-            };
-
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return;
+        locationListener = new LocationListener() {
+            public void onLocationChanged(Location location) {
+                prevLoc = location;
+                makeUseOfNewLoc();
             }
 
-            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
-        }
-        else {
-            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-            createLocationRequest();
-        }
+            public void onStatusChanged(String provider, int status, Bundle extras) {
+            }
+
+            public void onProviderEnabled(String provider) {
+            }
+
+            public void onProviderDisabled(String provider) {
+            }
+        };
+
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        createLocationRequest();
 
         locCallback = new LocationCallback() {
             @Override
@@ -206,8 +204,28 @@ public class LocationService extends Service {
         };
     }
 
-    private void makeUseOfNewLoc(){
-        if(!main.isDestroyed())
+    private boolean isGPSEnabled(){
+        try {
+            return lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private boolean isNetworkEnabled(){
+        try {
+            return lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private void makeUseOfNewLoc() {
+        if (!main.isDestroyed())
             main.locationUpdated(prevLoc);
 
         main.saveNewLocationToDB(prevLoc);
@@ -220,7 +238,7 @@ public class LocationService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
 
-        if(!updatesOn) {
+        if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
@@ -242,8 +260,7 @@ public class LocationService extends Service {
                 notificationManager.createNotificationChannel(channel);
 
                 channelId = channel.getId();
-            }
-            else{
+            } else {
                 channelId = "notification";
             }
 
@@ -266,15 +283,23 @@ public class LocationService extends Service {
             startForeground(12893, notification);
         }
 
-        startLocationUpdates();
+        if(isGPSEnabled())
+            startLocationUpdates();
+        else if(isNetworkEnabled())
+            startLocationUpdatesInternetOnly();
 
         return START_STICKY;
     }
 
+    public static boolean alive = false;
+
     @Override
     public void onDestroy() {
         stopLocationUpdates();
+        stopLocationUpdatesInternetOnly();
         thread.interrupt();
+
+        alive = false;
     }
 
     public void createLocationRequest() {
@@ -303,19 +328,48 @@ public class LocationService extends Service {
 
     public static boolean updatesOn = false;
     public static final int gpsAccessRequestCode = 14894;
+
+    private static boolean gpsUpdatesOn = false;
     private void startLocationUpdates() {
+        if(gpsUpdatesOn)
+            return;
+
         if (ActivityCompat.checkSelfPermission(main, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(main, new String[] {Manifest.permission.ACCESS_FINE_LOCATION}, gpsAccessRequestCode);
+            ActivityCompat.requestPermissions(main, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, gpsAccessRequestCode);
             return;
         }
 
         fusedLocationClient.requestLocationUpdates(locRequest, locCallback, Looper.getMainLooper());
-        updatesOn = true;
+        updatesOn = gpsUpdatesOn = true;
     }
 
-    private void stopLocationUpdates(){
+    private static boolean internetUpdatesOn = false;
+    private void startLocationUpdatesInternetOnly(){
+        if(internetUpdatesOn)
+            return;
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+        updatesOn = internetUpdatesOn = true;
+    }
+
+    private void stopLocationUpdates() {
+        if(!gpsUpdatesOn)
+            return;
+
         fusedLocationClient.removeLocationUpdates(locCallback);
-        updatesOn = false;
+        updatesOn = gpsUpdatesOn = false;
+    }
+
+    private void stopLocationUpdatesInternetOnly(){
+        if(!internetUpdatesOn)
+            return;
+
+        lm.removeUpdates(locationListener);
+        updatesOn = internetUpdatesOn = false;
     }
 
 }

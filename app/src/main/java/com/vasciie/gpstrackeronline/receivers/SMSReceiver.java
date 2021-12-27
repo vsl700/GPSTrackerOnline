@@ -95,6 +95,7 @@ public class SMSReceiver extends BroadcastReceiver {
                                             Thread.sleep(500);
                                         } catch (InterruptedException e) {
                                             e.printStackTrace();
+                                            return;
                                         }
                                     }
                                 }
@@ -112,9 +113,10 @@ public class SMSReceiver extends BroadcastReceiver {
                             if(gps_enabled) {
                                 while (LocationService.prevLoc == null) {
                                     try {
-                                        Thread.sleep(500); // TODO: This cycle blocks the app sometimes! Think of another way!
+                                        Thread.sleep(500);
                                     } catch (InterruptedException e) {
                                         e.printStackTrace();
+                                        return;
                                     }
                                 }
                             }

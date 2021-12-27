@@ -77,11 +77,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if(LoginWayActivity.dbHelper == null) {
             LoginWayActivity.dbHelper = new FeedReaderDbHelper(this);
-
         }
         dbHelper = LoginWayActivity.dbHelper;
 
-        if(!LocationService.updatesOn)
+        if(!LocationService.alive)
             locService = new Intent(this, LocationService.class);
 
         if(currentMainActivity == null) { // If that's the first time we start the activity
