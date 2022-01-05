@@ -1,6 +1,5 @@
 package com.vasciie.gpstrackeronline.receivers;
 
-import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -12,19 +11,12 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
-import com.vasciie.gpstrackeronline.services.LocationService;
+import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.util.Iterator;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -90,16 +82,16 @@ public class SMSReceiver extends BroadcastReceiver {
                     System.out.println("Internet: " + network_enabled);
 
                     Intent locService;
-                    if (!LocationService.alive) {
-                        MainActivity.locService = locService = new Intent(context.getApplicationContext(), LocationService.class);
-                        LocationService.prevLoc = null;
+                    if (!TrackerService.alive) {
+                        MainActivity.locService = locService = new Intent(context.getApplicationContext(), TrackerService.class);
+                        TrackerService.prevLoc = null;
                     }
                     else{
                         locService = MainActivity.locService;
                     }
 
                     context.startService(locService);
-                    LocationService.isCallerTracking = true;
+                    TrackerService.isCallerTracking = true;
 
 
                     boolean returnOnline = data.contains(MainActivity.returnOnlineReq);
@@ -109,10 +101,10 @@ public class SMSReceiver extends BroadcastReceiver {
                             ExecutorService threadPool = Executors.newCachedThreadPool();
                             boolean finalGps_enabled = gps_enabled;
                             String finalFrom = from;
-                            Future<Boolean> futureTask = (Future<Boolean>) threadPool.submit(() -> {
+                            threadPool.submit(() -> {
                                 if (finalGps_enabled) {
                                     int timeout = 60;
-                                    while (LocationService.prevLoc == null && timeout > 0) {
+                                    while (TrackerService.prevLoc == null && timeout > 0) {
                                         try {
                                             Thread.sleep(1000);
                                             timeout--;
@@ -124,7 +116,7 @@ public class SMSReceiver extends BroadcastReceiver {
                                 }
 
                                 // Send SMS
-                                String currentLoc = LocationService.prevLoc.getLatitude() + ";" + LocationService.prevLoc.getLongitude();
+                                String currentLoc = TrackerService.prevLoc.getLatitude() + ";" + TrackerService.prevLoc.getLongitude();
                                 String locList = getLocationsDataList();
 
                                 String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
@@ -132,7 +124,7 @@ public class SMSReceiver extends BroadcastReceiver {
                                 SmsManager smsManager = SmsManager.getDefault();
                                 smsManager.sendTextMessage(finalFrom, null, message, null, null);
 
-                                LocationService.isCallerTracking = false;
+                                TrackerService.isCallerTracking = false;
 
                                 return true;
                             });
@@ -142,10 +134,10 @@ public class SMSReceiver extends BroadcastReceiver {
                         boolean finalGps_enabled = gps_enabled;
                         boolean finalNetwork_enabled = network_enabled;
                         String finalFrom = from;
-                        Future<Boolean> futureTask = (Future<Boolean>) threadPool.submit(() -> {
+                        threadPool.submit(() -> {
                             if(finalGps_enabled || finalNetwork_enabled) {
                                 int timeout = 60;
-                                while (LocationService.prevLoc == null && timeout > 0) {
+                                while (TrackerService.prevLoc == null && timeout > 0) {
                                     try {
                                         Thread.sleep(1000);
                                         timeout--;
@@ -158,9 +150,9 @@ public class SMSReceiver extends BroadcastReceiver {
 
                             // Send SMS
                             String currentLoc;
-                            if(LocationService.prevLoc == null)
+                            if(TrackerService.prevLoc == null)
                                 currentLoc = unavailableTag;
-                            else currentLoc = LocationService.prevLoc.getLatitude() + ";" + LocationService.prevLoc.getLongitude();
+                            else currentLoc = TrackerService.prevLoc.getLatitude() + ";" + TrackerService.prevLoc.getLongitude();
                             String locList = getLocationsDataList();
 
                             String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
@@ -168,7 +160,7 @@ public class SMSReceiver extends BroadcastReceiver {
                             SmsManager smsManager = SmsManager.getDefault();
                             smsManager.sendTextMessage(finalFrom, null, message, null, null);
 
-                            LocationService.isCallerTracking = false;
+                            TrackerService.isCallerTracking = false;
 
                             return true;
                         });

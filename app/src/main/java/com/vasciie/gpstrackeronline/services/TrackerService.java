@@ -15,6 +15,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,13 +40,43 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
+import com.microsoft.signalr.HubConnection;
+import com.microsoft.signalr.HubConnectionBuilder;
 import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-public class LocationService extends Service {
+public class TrackerService extends Service {
+    static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected Void doInBackground(HubConnection... hubConnections) {
+            HubConnection hubConnection = hubConnections[0];
+            hubConnection.start().blockingAwait();
+            System.out.println(hubConnection.getConnectionId());
+            System.out.println(hubConnection.getConnectionState());
+            return null;
+        }
+    }
+
+
     private Looper serviceLooper;
     private ServiceHandler serviceHandler;
     private HandlerThread thread;
@@ -56,6 +87,9 @@ public class LocationService extends Service {
 
     public LocationRequest locRequest;
     public LocationListener locationListener;
+
+    private HubConnection hubConnection;
+    private static final String primaryLink = "http://192.168.0.107";
 
     // The access to the activity functions and public application fields
     public static MainActivity main;
@@ -70,10 +104,10 @@ public class LocationService extends Service {
 
 
     private static final class ServiceHandler extends Handler {
-        private final LocationService locService;
+        private final TrackerService locService;
         private final Random r;
 
-        public ServiceHandler(LocationService locService, Looper looper) {
+        public ServiceHandler(TrackerService locService, Looper looper) {
             super(looper);
 
             this.locService = locService;
@@ -166,7 +200,6 @@ public class LocationService extends Service {
     }
 
     public static Location prevLoc;
-
     @Override
     public void onCreate() {
         alive = true;
@@ -210,6 +243,13 @@ public class LocationService extends Service {
                 makeUseOfNewLoc();
             }
         };
+
+
+        hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=" + 1).build();
+        hubConnection.on("sendToUser", (user, message)-> {
+            System.out.println("User: " + user);
+            System.out.println("Message: " + message);
+        }, String.class,String.class);
     }
 
     private boolean isGPSEnabled(){
@@ -238,10 +278,50 @@ public class LocationService extends Service {
         serviceHandler.locationReceived();
     }
 
+    private static boolean isOnline = false;
     @SuppressLint("RemoteViewLayout")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
+
+        if(!isOnline) {
+            isOnline = true;
+            new HubConnectionTask().execute(hubConnection);
+            hubConnection.onClosed((e) -> e.printStackTrace());
+
+            if(LoginWayActivity.loggedInCaller){
+                ExecutorService threadPool = Executors.newCachedThreadPool();
+                threadPool.submit(() -> {
+                    try {
+                        URL url = new URL(primaryLink + "/api/caller");
+                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                        connection.setConnectTimeout(5000);
+                        connection.setRequestMethod("POST");
+                        connection.setRequestProperty("Content-Type", "application/json; utf-8");
+                        connection.setRequestProperty("Accept", "application/json");
+                        connection.setDoOutput(true);
+
+                        String jsonInput = "[\"vsl700\", \"stBG3541!\"]"; // TODO: Might need to remove password sending and saving
+                        try(OutputStream os = connection.getOutputStream()) {
+                            byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                            os.write(input, 0, input.length);
+                        }
+
+                        try(BufferedReader br = new BufferedReader(
+                                new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                            StringBuilder response = new StringBuilder();
+                            String responseLine;
+                            while ((responseLine = br.readLine()) != null) {
+                                response.append(responseLine.trim());
+                            }
+                            System.out.println(response.toString());
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+        }
 
         if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
@@ -303,6 +383,10 @@ public class LocationService extends Service {
         stopLocationUpdatesInternetOnly();
         thread.interrupt();
         thread.quit();
+
+        stopHubConnection();
+        hubConnection.close();
+
 
         isCallerTracking = false;
 
@@ -377,6 +461,11 @@ public class LocationService extends Service {
 
         lm.removeUpdates(locationListener);
         updatesOn = internetUpdatesOn = false;
+    }
+
+    private void stopHubConnection() {
+        hubConnection.stop();
+        isOnline = false;
     }
 
 }
