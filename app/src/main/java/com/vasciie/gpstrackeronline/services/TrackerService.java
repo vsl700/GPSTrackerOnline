@@ -61,6 +61,8 @@ import java.util.concurrent.Executors;
 public class TrackerService extends Service {
     static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
 
+        public HubConnectionTask(){super();} // To prevent a Deprecation warning
+
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
@@ -140,7 +142,7 @@ public class TrackerService extends Service {
                                 locService.stopLocationUpdatesInternetOnly();
                             }
 
-                            System.out.println("Cycling...");
+                            System.out.println("Inner cycling...");
                             Thread.sleep(1000);
                             secs++;
                         }
@@ -245,11 +247,11 @@ public class TrackerService extends Service {
         };
 
 
-        hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=" + 1).build();
-        hubConnection.on("sendToUser", (user, message)-> {
+        hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=vsl700").build();
+        hubConnection.on("sendToUser", (user, message) -> main.runOnUiThread(() -> {
             System.out.println("User: " + user);
             System.out.println("Message: " + message);
-        }, String.class,String.class);
+        }), String.class,String.class);
     }
 
     private boolean isGPSEnabled(){
@@ -287,7 +289,7 @@ public class TrackerService extends Service {
         if(!isOnline) {
             isOnline = true;
             new HubConnectionTask().execute(hubConnection);
-            hubConnection.onClosed((e) -> e.printStackTrace());
+            hubConnection.onClosed(Throwable::printStackTrace);
 
             if(LoginWayActivity.loggedInCaller){
                 ExecutorService threadPool = Executors.newCachedThreadPool();
