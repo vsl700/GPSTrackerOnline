@@ -71,7 +71,13 @@ public class TrackerService extends Service {
         @Override
         protected Void doInBackground(HubConnection... hubConnections) {
             HubConnection hubConnection = hubConnections[0];
-            hubConnection.start().blockingAwait();
+            try {
+                hubConnection.start().blockingAwait();
+                hubConnection.send("sendToUser", "vsl700", "from the target");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             System.out.println(hubConnection.getConnectionId());
             System.out.println(hubConnection.getConnectionState());
             return null;
@@ -91,7 +97,7 @@ public class TrackerService extends Service {
     public LocationListener locationListener;
 
     private HubConnection hubConnection;
-    private static final String primaryLink = "http://192.168.0.107";
+    private static final String primaryLink = "http://192.168.0.107:80";
 
     // The access to the activity functions and public application fields
     public static MainActivity main;
@@ -388,7 +394,6 @@ public class TrackerService extends Service {
 
         stopHubConnection();
         hubConnection.close();
-
 
         isCallerTracking = false;
 
