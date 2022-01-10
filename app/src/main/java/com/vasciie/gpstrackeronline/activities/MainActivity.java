@@ -44,14 +44,14 @@ import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    private GoogleMap gMap;
+    protected GoogleMap gMap;
 
-    private Marker currentMarker, lookupMarker;
-    private Marker[] lookupMarkers;
+    protected Marker currentMarker, lookupMarker;
+    protected Marker[] lookupMarkers;
 
     public static Intent locService;
 
-    private static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
+    protected static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
     public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
 
     // Using LinkedList to improve performance while tracking
@@ -59,12 +59,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static LinkedList<Double> latitudes = new LinkedList<>(), longitudes = new LinkedList<>();
     public static LinkedList<Integer> images = new LinkedList<>();
 
-    private static FeedReaderDbHelper dbHelper;
+    protected static FeedReaderDbHelper dbHelper;
 
     // For indexing the app's database image numbers with the real app picture IDs (held in class R)
     public static HashMap<Integer, Integer> imageIds;
 
-    private static final Random r = new Random();
+    protected static final Random r = new Random();
 
     public static MainActivity currentMainActivity;
 
@@ -72,7 +72,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        if(!(this instanceof MainActivityCaller))
+            setContentView(R.layout.activity_main_target);
 
         initializeDB();
 
@@ -96,20 +97,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         currentMainActivity = this;
 
+        if(!(this instanceof MainActivityCaller)) {
+            if (savedInstanceState == null) {
+                getSupportFragmentManager().beginTransaction()
+                        .setReorderingAllowed(true)
+                        .add(R.id.mapView, SupportMapFragment.class, null)
+                        .commit();
 
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .setReorderingAllowed(true)
-                    .add(R.id.mapView, SupportMapFragment.class, null)
-                    .commit();
+                getSupportFragmentManager().beginTransaction()
+                        .setReorderingAllowed(true)
+                        .add(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                        .commit();
+            }
 
-            getSupportFragmentManager().beginTransaction()
-                    .setReorderingAllowed(true)
-                    .add(R.id.fragmentContainerView, ButtonsFragment.class, null)
-                    .commit();
+            getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
         }
-
-        getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
     }
 
     private static void initializeDB(){

@@ -95,7 +95,7 @@ public class LoginWayActivity extends AppCompatActivity {
     }
 
     private void startMainActivity(){
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(this, loggedInCaller ? MainActivityCaller.class : MainActivity.class);
         startActivity(intent);
 
         finish();

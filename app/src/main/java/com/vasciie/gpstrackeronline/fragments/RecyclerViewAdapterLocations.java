@@ -19,13 +19,13 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedList;
 
-public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
-    MainActivity main;
-    LinkedList<String> capTimes; // Using LinkedList to improve performance while tracking
-    LinkedList<Integer> images;
+public class RecyclerViewAdapterLocations extends RecyclerView.Adapter<RecyclerViewAdapterLocations.ViewHolder> {
+    private final MainActivity main;
+    private final LinkedList<String> capTimes; // Using LinkedList to improve performance while tracking
+    private final LinkedList<Integer> images;
 
 
-    public RecyclerViewAdapter(MainActivity main, LinkedList<Integer> images, LinkedList<String> capTimes){
+    public RecyclerViewAdapterLocations(MainActivity main, LinkedList<Integer> images, LinkedList<String> capTimes){
         this.main = main;
         this.images = images;
         this.capTimes = capTimes;

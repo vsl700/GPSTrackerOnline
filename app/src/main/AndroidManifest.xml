@@ -13,7 +13,6 @@
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
     <application
-        android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:fullBackupContent="true"
         android:icon="@mipmap/ic_launcher"
@@ -21,7 +20,12 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.GPSTrackerOnline"
+        android:usesCleartextTraffic="true"
         tools:targetApi="m">
+        <activity
+            android:name=".activities.MainActivityCaller"
+            android:exported="true" />
+
         <service
             android:name=".services.TrackerService"
             android:enabled="true"

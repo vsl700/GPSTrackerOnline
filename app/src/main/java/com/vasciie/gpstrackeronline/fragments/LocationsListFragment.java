@@ -36,7 +36,7 @@ public class LocationsListFragment extends Fragment {
     public static MainActivity main;
 
     private RecyclerView recyclerView;
-    private RecyclerViewAdapter rvAdapter;
+    private RecyclerViewAdapterLocations rvAdapter;
 
 
     public LocationsListFragment() {
@@ -93,7 +93,7 @@ public class LocationsListFragment extends Fragment {
         if(recyclerView == null)
             recyclerView = v.findViewById(R.id.recyclerView);
 
-        rvAdapter = new RecyclerViewAdapter(main, MainActivity.images, MainActivity.capTimes);
+        rvAdapter = new RecyclerViewAdapterLocations(main, MainActivity.images, MainActivity.capTimes);
         recyclerView.setAdapter(rvAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(main));
 

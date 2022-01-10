@@ -53,7 +53,7 @@ public class LoginCallerActivity extends AppCompatActivity {
 
         LoginWayActivity.loggedInCaller = true;
 
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(this, MainActivityCaller.class);
         startActivity(intent);
 
         LoginWayActivity.currentLoginWayActivity.finish();
