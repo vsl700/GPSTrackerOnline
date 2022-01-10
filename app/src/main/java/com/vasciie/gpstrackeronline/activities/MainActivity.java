@@ -32,7 +32,7 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
-import com.vasciie.gpstrackeronline.services.LocationService;
+import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -76,8 +76,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         initializeDB();
 
-        if(!LocationService.alive)
-            locService = new Intent(this, LocationService.class);
+        if(!TrackerService.alive)
+            locService = new Intent(this, TrackerService.class);
 
         if(currentMainActivity == null) { // If that's the first time we start the activity
             createImageIds();
@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             readLocationsFromDB();
 
 
-            startLocationService();
+            startServices();
         }
 
         currentMainActivity = this;
@@ -329,7 +329,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == LocationService.gpsAccessRequestCode) {
+        if(requestCode == TrackerService.gpsAccessRequestCode) {
             // I used a 'for' just in case I add more permissions
             for (int grantResult : grantResults) {
                 if (grantResult == PackageManager.PERMISSION_GRANTED) {
@@ -350,12 +350,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }*/
     }
 
-    private boolean startLocServiceInvoked = false;
-    private void startLocationService(){
-        if(!startLocServiceInvoked)
+    private boolean startServicesInvoked = false;
+    private void startServices(){
+        if(!startServicesInvoked)
             startService(locService);
 
-        startLocServiceInvoked = true;
+
+        startServicesInvoked = true;
     }
 
 
@@ -363,14 +364,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onResume() {
         super.onResume();
 
-        startLocationService();
+        startServices();
     }
 
     @Override
     public void onPause(){
         super.onPause();
 
-        /*if(!LocationService.isCallerTracking)
+        /*if(!TrackerService.isCallerTracking)
             stopService(locService);*/
     }
 

@@ -22,6 +22,7 @@ import androidx.core.app.ActivityCompat;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
+import com.vasciie.gpstrackeronline.services.TrackerService;
 
 public class LoginWayActivity extends AppCompatActivity {
 
@@ -76,11 +77,18 @@ public class LoginWayActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == smsReadRequestCode){
+        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode){
             for(int grantResult : grantResults){
                 if(grantResult == PackageManager.PERMISSION_DENIED) {
                     dbHelper.close();
                     System.exit(0);
+                }
+            }
+
+            if(requestCode == smsReadRequestCode) {
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, TrackerService.gpsAccessRequestCode);
+                    return;
                 }
             }
         }
