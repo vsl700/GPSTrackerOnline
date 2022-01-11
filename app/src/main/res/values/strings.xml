@@ -25,4 +25,7 @@
     <string name="enter_your_username">Enter your username</string>
     <string name="enter_your_password">Enter your password</string>
     <string name="your_phones">Your phones:</string>
+    <string name="return_data_online_if_possible">Return locations online if possible</string>
+    <string name="return_data_through_sms">Return locations through SMS</string>
+    <string name="return_data_through_sms_no_internet">Return locations through SMS if Internet not available</string>
 </resources>

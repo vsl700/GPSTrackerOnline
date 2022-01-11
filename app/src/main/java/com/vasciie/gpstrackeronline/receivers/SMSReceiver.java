@@ -16,6 +16,7 @@ import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -61,7 +62,8 @@ public class SMSReceiver extends BroadcastReceiver {
                 return;
 
             if (data.contains(MainActivity.smsServiceRequest)) {
-                String sentCode = data.substring(data.indexOf(':', data.indexOf("Code:")) + 1, data.lastIndexOf("\n\n"));
+                int indexOfCode = data.indexOf("Code:");
+                String sentCode = data.substring(data.indexOf(':', indexOfCode) + 1, data.indexOf('\n', indexOfCode));
                 String actualCode = LoginWayActivity.getLoggedTargetCode() + "";
                 if (sentCode.equals(actualCode)) { // To verify that the message is not a... prank
                     LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
@@ -122,7 +124,7 @@ public class SMSReceiver extends BroadcastReceiver {
                                 String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
                                         locListTag, locList, finalGps_enabled);
                                 SmsManager smsManager = SmsManager.getDefault();
-                                smsManager.sendTextMessage(finalFrom, null, message, null, null);
+                                smsManager.sendMultipartTextMessage(finalFrom, null, smsManager.divideMessage(message), null, null);
 
                                 TrackerService.isCallerTracking = false;
 
@@ -158,7 +160,7 @@ public class SMSReceiver extends BroadcastReceiver {
                             String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
                                     locListTag, locList, finalGps_enabled || finalNetwork_enabled);
                             SmsManager smsManager = SmsManager.getDefault();
-                            smsManager.sendTextMessage(finalFrom, null, message, null, null);
+                            smsManager.sendMultipartTextMessage(finalFrom, null, smsManager.divideMessage(message), null, null);
 
                             TrackerService.isCallerTracking = false;
 

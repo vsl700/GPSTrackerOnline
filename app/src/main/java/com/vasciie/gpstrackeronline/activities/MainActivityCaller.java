@@ -12,6 +12,7 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterLocations;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
+import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -78,15 +79,20 @@ public class MainActivityCaller extends MainActivity {
             if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
                 ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
             }
-            else takeActionOnSmsSendRequest();
+            else openSMSDialog();
         }
 
         return super.onOptionsItemSelected(item);
     }
 
-    private void takeActionOnSmsSendRequest(){
+    private void openSMSDialog(){
+        SMSDialog smsDialog = new SMSDialog();
+        smsDialog.show(getSupportFragmentManager(), "sms_dialog");
+    }
+
+    public static void takeActionOnSmsSendRequest(boolean online, boolean sms){
         String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, 123456,
-                returnOnlineReq, returnSmsReq);
+                online ? returnOnlineReq : "", sms ? returnSmsReq : "");
         SmsManager smsManager = SmsManager.getDefault();
         smsManager.sendTextMessage("+16505551212", null, message, null, null);
     }
