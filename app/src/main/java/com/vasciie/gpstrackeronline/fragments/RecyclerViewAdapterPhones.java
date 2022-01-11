@@ -42,6 +42,10 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
         return phones.length;
     }
 
+    public void onDestroy(){
+        ViewHolder.previouslyClicked = null;
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
         public Button button;
 

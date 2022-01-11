@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.vasciie.gpstrackeronline.R;
+import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 
 /**
@@ -80,7 +81,7 @@ public class LocationsListFragment extends Fragment {
         goBackListBtn.setOnClickListener(view -> {
             main.getSupportFragmentManager().beginTransaction()
                     .setReorderingAllowed(true)
-                    .replace(R.id.fragmentContainerView, ButtonsFragment.class, null)
+                    .replace(LoginWayActivity.loggedInCaller ? R.id.fragmentContainerView2 : R.id.fragmentContainerView, ButtonsFragment.class, null)
                     .commit();
 
             main.removeLookupMarkers();

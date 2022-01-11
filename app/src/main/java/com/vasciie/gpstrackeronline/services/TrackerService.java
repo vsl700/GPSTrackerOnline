@@ -42,6 +42,7 @@ import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.tasks.Task;
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
+import com.microsoft.signalr.HubConnectionState;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
@@ -73,7 +74,14 @@ public class TrackerService extends Service {
             HubConnection hubConnection = hubConnections[0];
             try {
                 hubConnection.start().blockingAwait();
-                hubConnection.send("sendToUser", "vsl700", "from the target");
+                isOnline = true;
+
+                if(!alive) {
+                    if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
+                        hubConnection.stop();
+
+                    hubConnection.close();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -168,7 +176,7 @@ public class TrackerService extends Service {
                         do {
                             Thread.sleep(500);
                             checks++;
-                            System.out.println("Cycling...");
+                            System.out.println("Location waiting...");
                         } while (!locReceived && checks < 14);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -196,7 +204,6 @@ public class TrackerService extends Service {
         }
 
         private boolean locReceived;
-
         public void locationReceived() {
             locReceived = true;
         }
@@ -281,9 +288,10 @@ public class TrackerService extends Service {
         if (!main.isDestroyed())
             main.locationUpdated(prevLoc);
 
-        main.saveNewLocationToDB(prevLoc);
-
-        serviceHandler.locationReceived();
+        if(LoginWayActivity.loggedInTarget) {
+            main.saveNewLocationToDB(prevLoc);
+            serviceHandler.locationReceived();
+        }
     }
 
     private static boolean isOnline = false;
@@ -293,7 +301,6 @@ public class TrackerService extends Service {
         main = MainActivity.currentMainActivity;
 
         if(!isOnline) {
-            isOnline = true;
             new HubConnectionTask().execute(hubConnection);
             hubConnection.onClosed(Throwable::printStackTrace);
 
@@ -309,7 +316,7 @@ public class TrackerService extends Service {
                         connection.setRequestProperty("Accept", "application/json");
                         connection.setDoOutput(true);
 
-                        String jsonInput = "[\"vsl700\", \"stBG3541!\"]"; // TODO: Might need to remove password sending and saving
+                        String jsonInput = "[\"vsl700\", \"stBG3541!\"]";
                         try(OutputStream os = connection.getOutputStream()) {
                             byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
                             os.write(input, 0, input.length);
@@ -392,8 +399,12 @@ public class TrackerService extends Service {
         thread.interrupt();
         thread.quit();
 
-        stopHubConnection();
-        hubConnection.close();
+        if(hubConnection != null) {
+            stopHubConnection();
+
+            if(!hubConnection.getConnectionState().equals(HubConnectionState.CONNECTING))
+                hubConnection.close();
+        }
 
         isCallerTracking = false;
 
@@ -471,7 +482,8 @@ public class TrackerService extends Service {
     }
 
     private void stopHubConnection() {
-        hubConnection.stop();
+        if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
+            hubConnection.stop();
         isOnline = false;
     }
 

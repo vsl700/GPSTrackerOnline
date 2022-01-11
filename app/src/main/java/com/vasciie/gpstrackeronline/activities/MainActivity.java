@@ -68,6 +68,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public static MainActivity currentMainActivity;
 
+    public static final String systemName = "Phone Tracker-Online";
+    public static final String smsServiceRequest = "request";
+    public static final String smsServiceResponse = "response";
+    public static final String returnOnlineReq = "return-online";
+    public static final String returnSmsReq = "return-sms";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -432,12 +438,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.actionbar_menu, menu);
-        if(LoginWayActivity.loggedInTarget)
-            menu.findItem(R.id.menu_sms_btn).setVisible(false);
+        menu.findItem(R.id.menu_sms_btn).setVisible(false);
         return super.onCreateOptionsMenu(menu);
     }
 
-    private static final int smsSendRequestCode = 39843;
+
     // handle button activities
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -449,27 +454,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         else if(id == R.id.menu_logout_btn){
             logout();
         }
-        else if(id == R.id.menu_sms_btn){
-            if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
-                ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
-            }
-            else takeActionOnSmsSendRequest();
-        }
 
         return super.onOptionsItemSelected(item);
     }
 
-    public static final String systemName = "Phone Tracker-Online";
-    public static final String smsServiceRequest = "request";
-    public static final String smsServiceResponse = "response";
-    public static final String returnOnlineReq = "return-online";
-    public static final String returnSmsReq = "return-sms";
-    private void takeActionOnSmsSendRequest(){
-        String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, 123456,
-                returnOnlineReq, returnSmsReq);
-        SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage("+16505551212", null, message, null, null);
-    }
+
 
     public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
         String[] currentElements = currentLoc.split(";");
