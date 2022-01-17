@@ -13,6 +13,7 @@ import android.widget.Toast;
 
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
@@ -169,6 +170,10 @@ public class SMSReceiver extends BroadcastReceiver {
                     }
                 }
             } else if (data.contains(MainActivity.smsServiceResponse)) {
+                if(MainActivityCaller.currentMainActivity.isDestroyed()){
+                    context.startActivity(new Intent(context, MainActivityCaller.class));
+                }
+
                 int x = data.indexOf(locListTag) + locListTag.length() + 1;
                 System.out.println(x);
                 int y = Math.max(data.lastIndexOf("\n\n"), x);
