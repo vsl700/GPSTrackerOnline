@@ -5,7 +5,6 @@ import android.app.Dialog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.CompoundButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -21,8 +20,8 @@ public class SMSDialog extends AppCompatDialogFragment {
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-        LayoutInflater inflater = /*getActivity().*/getLayoutInflater();
-        View view = inflater.inflate(R.layout.layout_dialog, null);
+        LayoutInflater inflater = getLayoutInflater();
+        View view = inflater.inflate(R.layout.layout_dialog_sms, null);
 
         SwitchCompat online = view.findViewById(R.id.return_online_sw);
         SwitchCompat sms = view.findViewById(R.id.return_sms_sw);

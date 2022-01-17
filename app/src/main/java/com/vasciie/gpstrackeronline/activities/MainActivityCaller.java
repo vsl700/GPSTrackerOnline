@@ -1,6 +1,12 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import androidx.appcompat.app.AppCompatActivity;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.telephony.SmsManager;
+import android.view.Menu;
+import android.view.MenuItem;
+
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
@@ -10,20 +16,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
-import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterLocations;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
-
-import android.Manifest;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.telephony.SmsManager;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.widget.Button;
-import android.widget.HorizontalScrollView;
-import android.widget.LinearLayout;
 
 public class MainActivityCaller extends MainActivity {
 

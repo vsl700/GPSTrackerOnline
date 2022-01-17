@@ -28,4 +28,6 @@
     <string name="return_data_online_if_possible">Return locations online if possible</string>
     <string name="return_data_through_sms">Return locations through SMS</string>
     <string name="return_data_through_sms_no_internet">Return locations through SMS if Internet not available</string>
+    <string name="please_check_your_internet_connection">Please check your Internet connection!</string>
+    <string name="no_internet">no_internet</string>
 </resources>

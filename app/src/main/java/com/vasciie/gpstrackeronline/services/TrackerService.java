@@ -30,6 +30,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -46,6 +47,8 @@ import com.microsoft.signalr.HubConnectionState;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
+import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
 import java.io.BufferedReader;
@@ -122,6 +125,7 @@ public class TrackerService extends Service {
     private static final class ServiceHandler extends Handler {
         private final TrackerService locService;
         private final Random r;
+        private NoInternetDialog noInternetDialog;
 
         public ServiceHandler(TrackerService locService, Looper looper) {
             super(looper);
@@ -191,6 +195,17 @@ public class TrackerService extends Service {
                     else{
                         locService.stopLocationUpdatesInternetOnly();
                         locService.startLocationUpdates();
+                    }
+
+                    if(TrackerService.main instanceof MainActivityCaller && TrackerService.main.getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED)) {
+                        if (!locService.isNetworkEnabled()) {
+                            if (TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") == null) {
+                                noInternetDialog = new NoInternetDialog();
+                                noInternetDialog.show(TrackerService.main.getSupportFragmentManager(), "no_internet");
+                            }
+                        } else if (noInternetDialog != null && TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") != null) {
+                            noInternetDialog.dismiss();
+                        }
                     }
                 }
 
