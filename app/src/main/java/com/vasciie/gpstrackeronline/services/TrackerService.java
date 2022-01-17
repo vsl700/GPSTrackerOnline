@@ -195,16 +195,16 @@ public class TrackerService extends Service {
                     else{
                         locService.stopLocationUpdatesInternetOnly();
                         locService.startLocationUpdates();
-                    }
 
-                    if(TrackerService.main instanceof MainActivityCaller && TrackerService.main.getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED)) {
-                        if (!locService.isNetworkEnabled()) {
-                            if (TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") == null) {
-                                noInternetDialog = new NoInternetDialog();
-                                noInternetDialog.show(TrackerService.main.getSupportFragmentManager(), "no_internet");
+                        if(TrackerService.main instanceof MainActivityCaller && TrackerService.main.getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED)) {
+                            if (!locService.isNetworkEnabled()) {
+                                if (TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") == null) {
+                                    noInternetDialog = new NoInternetDialog();
+                                    noInternetDialog.show(TrackerService.main.getSupportFragmentManager(), "no_internet");
+                                }
+                            } else if (noInternetDialog != null && TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") != null) {
+                                noInternetDialog.dismiss();
                             }
-                        } else if (noInternetDialog != null && TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") != null) {
-                            noInternetDialog.dismiss();
                         }
                     }
                 }
