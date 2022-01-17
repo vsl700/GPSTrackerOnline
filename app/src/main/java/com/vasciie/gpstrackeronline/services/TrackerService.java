@@ -51,16 +51,7 @@ import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class TrackerService extends Service {
     static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
@@ -77,7 +68,6 @@ public class TrackerService extends Service {
             HubConnection hubConnection = hubConnections[0];
             try {
                 hubConnection.start().blockingAwait();
-                isOnline = true;
 
                 if(!alive) {
                     if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
@@ -87,6 +77,7 @@ public class TrackerService extends Service {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                isOnline = false;
             }
 
             System.out.println(hubConnection.getConnectionId());
@@ -318,39 +309,7 @@ public class TrackerService extends Service {
         if(!isOnline) {
             new HubConnectionTask().execute(hubConnection);
             hubConnection.onClosed(Throwable::printStackTrace);
-
-            if(LoginWayActivity.loggedInCaller){
-                ExecutorService threadPool = Executors.newCachedThreadPool();
-                threadPool.submit(() -> {
-                    try {
-                        URL url = new URL(primaryLink + "/api/caller");
-                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                        connection.setConnectTimeout(5000);
-                        connection.setRequestMethod("POST");
-                        connection.setRequestProperty("Content-Type", "application/json; utf-8");
-                        connection.setRequestProperty("Accept", "application/json");
-                        connection.setDoOutput(true);
-
-                        String jsonInput = "[\"vsl700\", \"stBG3541!\"]";
-                        try(OutputStream os = connection.getOutputStream()) {
-                            byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
-                            os.write(input, 0, input.length);
-                        }
-
-                        try(BufferedReader br = new BufferedReader(
-                                new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                            StringBuilder response = new StringBuilder();
-                            String responseLine;
-                            while ((responseLine = br.readLine()) != null) {
-                                response.append(responseLine.trim());
-                            }
-                            System.out.println(response.toString());
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-            }
+            isOnline = true;
         }
 
         if (!updatesOn) {

@@ -1,14 +1,17 @@
 package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityOptions;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Build;
 import android.os.Bundle;
+import android.telephony.TelephonyManager;
 import android.transition.Slide;
 import android.view.Gravity;
 import android.view.Window;
@@ -22,6 +25,7 @@ import androidx.core.app.ActivityCompat;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 public class LoginWayActivity extends AppCompatActivity {
@@ -125,7 +129,14 @@ public class LoginWayActivity extends AppCompatActivity {
 
         // If there's something written in there, it means a target is already logged in
         if(cursor.moveToNext()){
+            int code = cursor.getInt(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE));
             cursor.close();
+
+            TelephonyManager tm = (TelephonyManager) currentLoginWayActivity.getSystemService(Context.TELEPHONY_SERVICE);
+            @SuppressLint("HardwareIds") long imei = Long.parseLong(tm.getDeviceId());
+
+            if(!APIConnector.TargetLogin(code, imei))
+                return false;
 
             loggedInTarget = true;
             return true;
@@ -150,7 +161,12 @@ public class LoginWayActivity extends AppCompatActivity {
 
         // If there's something written in there, it means a user is already logged in
         if(cursor.moveToNext()){
+            String username = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME));
+            String password = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD));
             cursor.close();
+
+            if(!APIConnector.CallerLogin(username, password))
+                return false;
 
             loggedInCaller = true;
             return true;

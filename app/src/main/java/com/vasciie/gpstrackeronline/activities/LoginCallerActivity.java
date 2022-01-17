@@ -5,18 +5,23 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 
 public class LoginCallerActivity extends AppCompatActivity {
 
     private TextView username, password;
+    private ProgressBar progressBar;
 
     public static Activity currentLoginCallerActivity;
     
@@ -33,13 +38,25 @@ public class LoginCallerActivity extends AppCompatActivity {
         password = findViewById(R.id.textInput_Password);
         password.setOnEditorActionListener((textView, i, keyEvent) -> login());
 
+        progressBar = findViewById(R.id.progressBar_caller);
+
         Button login = findViewById(R.id.login_caller_btn);
         login.setOnClickListener(view -> login());
     }
 
     private boolean login(){
-        if(username.getText().toString().equals("") || password.getText().toString().equals(""))
+        progressBar.setVisibility(View.VISIBLE);
+
+        if(username.getText().toString().equals("") || password.getText().toString().equals("")) {
+            progressBar.setVisibility(View.INVISIBLE);
             return false;
+        }
+
+        if(!APIConnector.CallerLogin(username.getText().toString(), password.getText().toString())){
+            progressBar.setVisibility(View.INVISIBLE);
+            Toast.makeText(this, "Login failed!", Toast.LENGTH_SHORT).show();
+            return false;
+        }
 
         // Gets the data repository in write mode
         SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
@@ -62,7 +79,8 @@ public class LoginCallerActivity extends AppCompatActivity {
 
         finish();
 
-        return true; // TODO: Use these for online validation
+        progressBar.setVisibility(View.INVISIBLE);
+        return true;
     }
 
     @Override
