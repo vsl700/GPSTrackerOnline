@@ -34,7 +34,7 @@ public class SMSReceiver extends BroadcastReceiver {
             LoginWayActivity.dbHelper = new FeedReaderDbHelper(context);
 
 
-        if (!LoginWayActivity.checkLoggedIn())
+        if (!LoginWayActivity.checkLoggedIn(false))
             return;
 
         System.out.println("SMS Received!");

@@ -99,7 +99,7 @@ public class TrackerService extends Service {
     public LocationListener locationListener;
 
     private HubConnection hubConnection;
-    private static final String primaryLink = "http://192.168.0.107:80";
+    private static final String primaryLink = "http://192.168.0.104";
 
     // The access to the activity functions and public application fields
     public static MainActivity main;

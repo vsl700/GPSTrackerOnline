@@ -9,13 +9,16 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.telephony.TelephonyManager;
 import android.transition.Slide;
 import android.view.Gravity;
+import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,6 +32,30 @@ import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 public class LoginWayActivity extends AppCompatActivity {
+
+    private static class LoginCheckTask extends AsyncTask<LoginWayActivity, Void, Void>{
+
+        public LoginCheckTask(){super();} // To prevent a Deprecation warning
+
+        @Override
+        protected Void doInBackground(LoginWayActivity... objects) {
+            if(checkLoggedIn(true)){
+                objects[0].startMainActivity();
+            }
+
+            objects[0].runOnUiThread(() -> {
+                objects[0].entryProgressBar.setVisibility(View.INVISIBLE);
+                objects[0].loginCallerBtn.setEnabled(true);
+                objects[0].loginTargetBtn.setEnabled(true);
+            });
+
+            return null;
+        }
+    }
+
+
+    private ProgressBar entryProgressBar;
+    private Button loginCallerBtn, loginTargetBtn;
 
     public static FeedReaderDbHelper dbHelper;
     public static LoginWayActivity currentLoginWayActivity;
@@ -51,10 +78,6 @@ public class LoginWayActivity extends AppCompatActivity {
         if(dbHelper == null)
             dbHelper = new FeedReaderDbHelper(this);
 
-        if(checkLoggedIn()){
-            startMainActivity();
-            return;
-        }
 
         currentLoginWayActivity = this;
 
@@ -64,17 +87,22 @@ public class LoginWayActivity extends AppCompatActivity {
             getWindow().setExitTransition(new Slide(Gravity.START));
         }
 
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_login); // Because of the animation feature above
 
-        Button loginCaller = findViewById(R.id.caller_login_btn);
-        loginCaller.setOnClickListener(view -> {
+
+        entryProgressBar = findViewById(R.id.progressBar_entry);
+
+        loginCallerBtn = findViewById(R.id.caller_login_btn);
+        loginCallerBtn.setOnClickListener(view -> {
             startOtherActivity(LoginCallerActivity.class);
         });
 
-        Button loginTarget = findViewById(R.id.target_login_btn);
-        loginTarget.setOnClickListener(view -> {
+        loginTargetBtn = findViewById(R.id.target_login_btn);
+        loginTargetBtn.setOnClickListener(view -> {
             startOtherActivity(LoginTargetActivity.class);
         });
+
+        new LoginCheckTask().execute(this);
     }
 
     @Override
@@ -92,7 +120,6 @@ public class LoginWayActivity extends AppCompatActivity {
             if(requestCode == smsReadRequestCode) {
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, TrackerService.gpsAccessRequestCode);
-                    return;
                 }
             }
         }
@@ -105,7 +132,7 @@ public class LoginWayActivity extends AppCompatActivity {
         finish();
     }
 
-    public static boolean checkLoggedIn(){
+    public static boolean checkLoggedIn(boolean startup){
         if(loggedInCaller || loggedInTarget)
             return true;
 
@@ -132,11 +159,13 @@ public class LoginWayActivity extends AppCompatActivity {
             int code = cursor.getInt(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE));
             cursor.close();
 
-            TelephonyManager tm = (TelephonyManager) currentLoginWayActivity.getSystemService(Context.TELEPHONY_SERVICE);
-            @SuppressLint("HardwareIds") long imei = Long.parseLong(tm.getDeviceId());
+            if(startup){
+                TelephonyManager tm = (TelephonyManager) currentLoginWayActivity.getSystemService(Context.TELEPHONY_SERVICE);
+                @SuppressLint("HardwareIds") long imei = Long.parseLong(tm.getDeviceId());
 
-            if(!APIConnector.TargetLogin(code, imei))
-                return false;
+                if(!APIConnector.TargetLogin(code, imei))
+                    return false;
+            }
 
             loggedInTarget = true;
             return true;
@@ -164,9 +193,10 @@ public class LoginWayActivity extends AppCompatActivity {
             String username = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME));
             String password = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD));
             cursor.close();
-
-            if(!APIConnector.CallerLogin(username, password))
-                return false;
+            if(startup){
+                if(!APIConnector.CallerLogin(username, password))
+                    return false;
+            }
 
             loggedInCaller = true;
             return true;

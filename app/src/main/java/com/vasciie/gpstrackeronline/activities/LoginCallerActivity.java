@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -20,8 +21,33 @@ import com.vasciie.gpstrackeronline.services.APIConnector;
 
 public class LoginCallerActivity extends AppCompatActivity {
 
+    private static class LoginCheckTask extends AsyncTask<LoginCallerActivity, Void, Void> {
+
+        public LoginCheckTask(){super();} // To prevent a Deprecation warning
+
+        @Override
+        protected Void doInBackground(LoginCallerActivity... objects) {
+            if(!APIConnector.CallerLogin(objects[0].username.getText().toString(), objects[0].password.getText().toString())){
+                objects[0].runOnUiThread(() -> {
+                    objects[0].progressBar.setVisibility(View.INVISIBLE);
+                    Toast.makeText(objects[0], "Login failed!", Toast.LENGTH_SHORT).show();
+                });
+
+            }
+            else
+                objects[0].runOnUiThread(() -> objects[0].loginSuccess());
+
+            objects[0].loginCheckTask = null;
+
+            return null;
+        }
+    }
+
+
     private TextView username, password;
     private ProgressBar progressBar;
+
+    private AsyncTask loginCheckTask;
 
     public static Activity currentLoginCallerActivity;
     
@@ -52,18 +78,19 @@ public class LoginCallerActivity extends AppCompatActivity {
             return false;
         }
 
-        if(!APIConnector.CallerLogin(username.getText().toString(), password.getText().toString())){
-            progressBar.setVisibility(View.INVISIBLE);
-            Toast.makeText(this, "Login failed!", Toast.LENGTH_SHORT).show();
-            return false;
-        }
+        loginCheckTask = new LoginCheckTask().execute(this);
 
+        return true;
+    }
+
+    private void loginSuccess(){
         // Gets the data repository in write mode
         SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
 
         // Create a new map of values, where column names are the keys
         ContentValues values = new ContentValues();
         values.put(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME, username.getText().toString());
+        values.put(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD, password.getText().toString());
 
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, values);
@@ -79,14 +106,14 @@ public class LoginCallerActivity extends AppCompatActivity {
 
         finish();
 
-        progressBar.setVisibility(View.INVISIBLE);
-        return true;
+        currentLoginCallerActivity = null;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         
-        currentLoginCallerActivity = null;
+        if(loginCheckTask == null)
+            currentLoginCallerActivity = null;
     }
 }

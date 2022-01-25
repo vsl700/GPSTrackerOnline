@@ -25,54 +25,41 @@ public final class APIConnector {
     }
 
     public static boolean CallerLogin(String username, String password) {
-        ExecutorService threadPool = Executors.newCachedThreadPool();
-        threadPool.submit(() -> {
-            try {
-                URL url = new URL(primaryLink + "/api/caller/login");
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setConnectTimeout(5000);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/json; utf-8");
-                connection.setRequestProperty("Accept", "application/json");
-                connection.setDoOutput(true);
+        try {
+            URL url = new URL(primaryLink + "/api/caller/login");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setDoOutput(true);
 
-                String jsonInput = String.format("[\"%s\", \"%s\"]", username, password);
-                try (OutputStream os = connection.getOutputStream()) {
-                    byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                try (BufferedReader br = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                    StringBuilder response = new StringBuilder();
-                    String responseLine;
-                    while ((responseLine = br.readLine()) != null) {
-                        response.append(responseLine.trim());
-                    }
-                    String responseStr = response.toString();
-                    System.out.println(responseStr);
-
-                    return Boolean.parseBoolean(responseStr);
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
+            String jsonInput = String.format("[\"%s\", \"%s\"]", username, password);
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
             }
 
-            return false;
-        });
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
 
-        boolean answer = false;
-        try {
-            answer = threadPool.awaitTermination(6000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
+                return Boolean.parseBoolean(responseStr);
+            }
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
-        return answer;
+        return false;
     }
 
     public static boolean TargetLogin(int code, long imei) {
-        ExecutorService threadPool = Executors.newCachedThreadPool();
         try {
             URL url = new URL(primaryLink + "/api/caller/login?targetCode=" + code + "&IMEI=" + imei);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
