@@ -69,7 +69,7 @@ public class LoginTargetActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         new LoginCheckTask().execute(this);
 
-        return true; // TODO: Use these for online validation
+        return true;
     }
 
     private void loginSuccess(){
