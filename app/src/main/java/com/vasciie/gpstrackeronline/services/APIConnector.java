@@ -59,9 +59,9 @@ public final class APIConnector {
         return false;
     }
 
-    public static boolean TargetLogin(int code, long imei) {
+    public static boolean TargetLogin(int code) {
         try {
-            URL url = new URL(primaryLink + "/api/caller/login?targetCode=" + code + "&IMEI=" + imei);
+            URL url = new URL(primaryLink + "/api/target/login?targetCode=" + code);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setConnectTimeout(5000);
             connection.setRequestMethod("POST");

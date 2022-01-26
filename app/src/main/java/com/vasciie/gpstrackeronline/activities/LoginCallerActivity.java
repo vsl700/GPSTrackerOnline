@@ -1,6 +1,5 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
@@ -63,13 +62,11 @@ public class LoginCallerActivity extends AppCompatActivity {
     }
 
     private boolean login(){
-        progressBar.setVisibility(View.VISIBLE);
-
         if(username.getText().toString().equals("") || password.getText().toString().equals("")) {
-            progressBar.setVisibility(View.INVISIBLE);
             return false;
         }
 
+        progressBar.setVisibility(View.VISIBLE);
         new LoginCheckTask().execute(this);
 
         return true;

@@ -165,10 +165,7 @@ public class LoginWayActivity extends AppCompatActivity {
             cursor.close();
 
             if(startup){
-                TelephonyManager tm = (TelephonyManager) currentLoginWayActivity.getSystemService(Context.TELEPHONY_SERVICE);
-                @SuppressLint("HardwareIds") long imei = Long.parseLong(tm.getDeviceId());
-
-                if(!APIConnector.TargetLogin(code, imei))
+                if(!APIConnector.TargetLogin(code))
                     return false;
             }
 
