@@ -37,8 +37,6 @@ public class LoginCallerActivity extends AppCompatActivity {
             else
                 objects[0].runOnUiThread(() -> objects[0].loginSuccess());
 
-            objects[0].loginCheckTask = null;
-
             return null;
         }
     }
@@ -46,17 +44,11 @@ public class LoginCallerActivity extends AppCompatActivity {
 
     private TextView username, password;
     private ProgressBar progressBar;
-
-    private AsyncTask loginCheckTask;
-
-    public static Activity currentLoginCallerActivity;
     
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login_caller);
-
-        currentLoginCallerActivity = this;
 
         username = findViewById(R.id.textInput_Username);
         username.setOnEditorActionListener((textView, i, keyEvent) -> password.requestFocus());
@@ -78,12 +70,16 @@ public class LoginCallerActivity extends AppCompatActivity {
             return false;
         }
 
-        loginCheckTask = new LoginCheckTask().execute(this);
+        new LoginCheckTask().execute(this);
 
         return true;
     }
 
     private void loginSuccess(){
+        // For some reason this method is being invoked twice by the Android's junk system
+        if(LoginWayActivity.loggedInCaller)
+            return;
+
         // Gets the data repository in write mode
         SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
 
@@ -101,19 +97,7 @@ public class LoginCallerActivity extends AppCompatActivity {
         startActivity(intent);
 
         LoginWayActivity.currentLoginWayActivity.finish();
-        if(LoginTargetActivity.currentLoginTargetActivity != null)
-            LoginTargetActivity.currentLoginTargetActivity.finish();
 
         finish();
-
-        currentLoginCallerActivity = null;
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        
-        if(loginCheckTask == null)
-            currentLoginCallerActivity = null;
     }
 }

@@ -67,6 +67,11 @@ public class LoginWayActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if(TrackerService.alive) {
+            startMainActivity();
+            return;
+        }
+
         loggedInTarget = loggedInCaller = false;
 
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
@@ -175,7 +180,8 @@ public class LoginWayActivity extends AppCompatActivity {
 
 
         String[] projection2 = {
-                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME
+                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME,
+                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD
         };
 
         cursor = db.query(

@@ -18,14 +18,10 @@ public class LoginTargetActivity extends AppCompatActivity {
 
     private TextView code;
 
-    public static Activity currentLoginTargetActivity;
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login_target);
-
-        currentLoginTargetActivity = this;
 
         code = findViewById(R.id.textInput_Code);
         code.setOnEditorActionListener((textView, i, keyEvent) -> login());
@@ -54,18 +50,9 @@ public class LoginTargetActivity extends AppCompatActivity {
         startActivity(intent);
 
         LoginWayActivity.currentLoginWayActivity.finish();
-        if(LoginCallerActivity.currentLoginCallerActivity != null)
-            LoginCallerActivity.currentLoginCallerActivity.finish();
 
         finish();
 
         return true; // TODO: Use these for online validation
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        currentLoginTargetActivity = null;
     }
 }
