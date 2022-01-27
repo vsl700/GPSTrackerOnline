@@ -29,7 +29,7 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(main);
         View view = inflater.inflate(R.layout.text_row_item2, parent, false);
-        return new ViewHolder(view);
+        return new ViewHolder(view, main);
     }
 
     @Override
@@ -52,11 +52,10 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
         private static ViewHolder previouslyClicked;
 
 
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView, MainActivityCaller main) {
             super(itemView);
 
             button = itemView.findViewById(R.id.phone_item_button);
-
 
             button.setOnClickListener(view -> {
                 System.out.println(button.getText() + ": CLICK!");
@@ -67,6 +66,8 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
 
                     previouslyClicked.deselect();
                 }
+
+                main.onPhoneSelected(getAdapterPosition());
 
                 previouslyClicked = this;
                 button.setBackgroundColor(button.getHighlightColor());

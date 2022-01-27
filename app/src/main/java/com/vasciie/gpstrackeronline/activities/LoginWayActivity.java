@@ -41,13 +41,13 @@ public class LoginWayActivity extends AppCompatActivity {
         protected Void doInBackground(LoginWayActivity... objects) {
             if(checkLoggedIn(true)){
                 objects[0].startMainActivity();
+            }else {
+                objects[0].runOnUiThread(() -> {
+                    objects[0].entryProgressBar.setVisibility(View.INVISIBLE);
+                    objects[0].loginCallerBtn.setEnabled(true);
+                    objects[0].loginTargetBtn.setEnabled(true);
+                });
             }
-
-            objects[0].runOnUiThread(() -> {
-                objects[0].entryProgressBar.setVisibility(View.INVISIBLE);
-                objects[0].loginCallerBtn.setEnabled(true);
-                objects[0].loginTargetBtn.setEnabled(true);
-            });
 
             return null;
         }

@@ -1,6 +1,5 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -8,14 +7,13 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
@@ -32,7 +30,6 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
-import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.text.SimpleDateFormat;
@@ -44,6 +41,16 @@ import java.util.Locale;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+    private static class FirstOperationsTask extends AsyncTask<MainActivity, Void, Void>{
+
+        public FirstOperationsTask(){super();}
+
+        @Override
+        protected Void doInBackground(MainActivity... mainActivities) {
+            return null;
+        }
+    }
+
 
     protected GoogleMap gMap;
 

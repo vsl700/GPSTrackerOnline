@@ -2,6 +2,7 @@ package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.view.Menu;
@@ -18,11 +19,42 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 
 public class MainActivityCaller extends MainActivity {
+    private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
+
+        public FirstOperationsTask(){super();}
+
+        @Override
+        protected Void doInBackground(MainActivityCaller... mainActivities) {
+            mainActivities[0].codes = APIConnector.GetTargetCodes();
+            System.out.println(mainActivities[0].codes);
+
+            mainActivities[0].setupPhonesList();
+
+            return null;
+        }
+    }
+    private static class PhoneSelectedTask extends AsyncTask<MainActivityCaller, Void, Void> {
+
+        public PhoneSelectedTask(){super();}
+
+        @Override
+        protected Void doInBackground(MainActivityCaller... mainActivities) {
+
+
+            return null;
+        }
+    }
+
 
     private RecyclerView recyclerView;
     private RecyclerViewAdapterPhones rvAdapter;
+
+    private int[] codes;
+    private int currentIndex = -1; // Selected phone's index from the list
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,9 +78,19 @@ public class MainActivityCaller extends MainActivity {
 
         recyclerView = findViewById(R.id.phones_list);
 
-        rvAdapter = new RecyclerViewAdapterPhones(this, new String[] {"phone1", "phone2", "phone3", "phone4", "phone5", "phone6"});
+        new FirstOperationsTask().execute(this);
+    }
+
+    private void setupPhonesList(){
+        String[] names = APIConnector.GetTargetNames();
+
+        rvAdapter = new RecyclerViewAdapterPhones(this, names);
         recyclerView.setAdapter(rvAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+    }
+
+    public void onPhoneSelected(int index){ // The index of the phone in the phones list
+        currentIndex = index;
     }
 
     @Override
