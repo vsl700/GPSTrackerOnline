@@ -483,13 +483,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         for(String loc : locsListArr){
             String[] elements = loc.split(";");
+            String capTime = elements[3];
+            if(capTimes.contains(capTime))
+                continue;
+
             double lat = Double.parseDouble(elements[0]);
             double lng = Double.parseDouble(elements[1]);
             int image = Integer.parseInt(elements[2]);
-            String capTime = elements[3];
 
-            if(capTimes.contains(capTime))
-                continue;
 
             latitudes.add(lat);
             longitudes.add(lng);
