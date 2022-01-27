@@ -181,4 +181,41 @@ public final class APIConnector {
 
         return null;
     }
+
+    public static String[] GetPreviousLocations(int code){
+        try {
+            URL url = new URL(primaryLink + "/api/target/locslist?targetCode=" + code);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+
+                JSONArray jsonArray = new JSONArray(responseStr);
+                String[] names = new String[jsonArray.length()];
+                for(int i = 0; i < jsonArray.length(); i++){
+                    names[i] = jsonArray.getString(i);
+                }
+
+                return names;
+            }
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

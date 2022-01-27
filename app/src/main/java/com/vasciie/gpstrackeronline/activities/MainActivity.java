@@ -30,6 +30,7 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
+import com.vasciie.gpstrackeronline.fragments.LocationsListFragment;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.text.SimpleDateFormat;
@@ -466,7 +467,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onOptionsItemSelected(item);
     }
 
-
+    public void showLocationsList(){
+        getSupportFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(LoginWayActivity.loggedInCaller ? R.id.fragmentContainerView2 : R.id.fragmentContainerView, LocationsListFragment.class, null, "loclist")
+                .commit();
+    }
 
     public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
         String[] currentElements = currentLoc.split(";");

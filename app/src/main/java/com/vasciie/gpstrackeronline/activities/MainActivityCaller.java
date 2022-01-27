@@ -42,7 +42,34 @@ public class MainActivityCaller extends MainActivity {
 
         @Override
         protected Void doInBackground(MainActivityCaller... mainActivities) {
+            int code = mainActivities[0].codes[mainActivities[0].currentIndex];
+            String[] prevLocs = APIConnector.GetPreviousLocations(code);
 
+            latitudes.clear();
+            longitudes.clear();
+            images.clear();
+            capTimes.clear();
+
+            if(prevLocs != null)
+            for(String loc : prevLocs){
+                loc = loc.replace(",", ".");
+                String[] locData = loc.split(";");
+
+                double lat = Double.parseDouble(locData[0]);
+                latitudes.add(lat);
+
+                double lng = Double.parseDouble(locData[1]);
+                longitudes.add(lng);
+
+                int image = Integer.parseInt(locData[2]);
+                images.add(image);
+
+                String capTime = locData[3];
+                capTimes.add(capTime);
+            }
+
+            if(mainActivities[0].getSupportFragmentManager().findFragmentByTag("loclist") != null && mainActivities[0].getSupportFragmentManager().findFragmentByTag("loclist").isVisible())
+                mainActivities[0].showLocationsList();
 
             return null;
         }
@@ -91,6 +118,8 @@ public class MainActivityCaller extends MainActivity {
 
     public void onPhoneSelected(int index){ // The index of the phone in the phones list
         currentIndex = index;
+
+        new PhoneSelectedTask().execute(this);
     }
 
     @Override
