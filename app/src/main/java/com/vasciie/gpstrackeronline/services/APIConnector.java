@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  * Phone Tracker-Online API. This class cannot be extended or instantiated
  */
 public final class APIConnector {
-    private static final String primaryLink = "http://192.168.0.104";
+    public static final String primaryLink = "http://192.168.0.104";
 
 
     private APIConnector() {
@@ -217,5 +218,41 @@ public final class APIConnector {
         }
 
         return null;
+    }
+
+    public static void SendContacts(JSONObject contacts){
+        try {
+            URL url = new URL(primaryLink + "/api/caller/contacts");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("POST");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+
+
+            String jsonInput = contacts.toString();
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // Without asking for a response from the API method the method just doesn't work...
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

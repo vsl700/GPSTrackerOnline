@@ -10,6 +10,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -24,6 +25,8 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
+import android.provider.ContactsContract;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
@@ -51,6 +54,10 @@ import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.Random;
 
 public class TrackerService extends Service {
@@ -99,7 +106,7 @@ public class TrackerService extends Service {
     public LocationListener locationListener;
 
     private HubConnection hubConnection;
-    private static final String primaryLink = "http://192.168.0.104";
+    private static final String primaryLink = APIConnector.primaryLink;
 
     // The access to the activity functions and public application fields
     public static MainActivity main;

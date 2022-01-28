@@ -63,22 +63,29 @@ public class LoginWayActivity extends AppCompatActivity {
     public static boolean loggedInTarget, loggedInCaller;
 
     private static final int smsReadRequestCode = 93021;
+    private static final int contactsReadRequestCode = 93024;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if(TrackerService.alive) {
-            startMainActivity();
-            return;
-        }
-
-        loggedInTarget = loggedInCaller = false;
-
+        boolean checkLogin = false; // Used to verify permissions first and then try entering...
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS}, smsReadRequestCode);
         }
+        else if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
+        }
+        else {
+            if (TrackerService.alive) {
+                startMainActivity();
+                return;
+            }
+            checkLogin = true;
+        }
+
+        loggedInTarget = loggedInCaller = false;
 
         if(dbHelper == null)
             dbHelper = new FeedReaderDbHelper(this);
@@ -107,14 +114,15 @@ public class LoginWayActivity extends AppCompatActivity {
             startOtherActivity(LoginTargetActivity.class);
         });
 
-        new LoginCheckTask().execute(this);
+        if(checkLogin)
+            new LoginCheckTask().execute(this);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode){
+        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode || requestCode == contactsReadRequestCode){
             for(int grantResult : grantResults){
                 if(grantResult == PackageManager.PERMISSION_DENIED) {
                     dbHelper.close();
@@ -126,6 +134,16 @@ public class LoginWayActivity extends AppCompatActivity {
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, TrackerService.gpsAccessRequestCode);
                 }
+            }
+            else if(requestCode == TrackerService.gpsAccessRequestCode){
+                if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
+                    ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
+                }
+            }
+            else if(TrackerService.alive) {
+                startMainActivity();
+            }else{
+                new LoginCheckTask().execute(this);
             }
         }
     }
