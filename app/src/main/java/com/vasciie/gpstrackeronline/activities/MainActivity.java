@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -479,12 +480,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void showLocationsList(){
+        if(getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED))
         getSupportFragmentManager().beginTransaction()
                 .setReorderingAllowed(true)
                 .replace(LoginWayActivity.loggedInCaller ? R.id.fragmentContainerView2 : R.id.fragmentContainerView, LocationsListFragment.class, null, "loclist")
                 .commit();
     }
-
-
 
 }
