@@ -18,6 +18,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
@@ -25,6 +29,8 @@ import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 import com.vasciie.gpstrackeronline.services.APIConnector;
 
 import org.json.JSONObject;
+
+import java.util.concurrent.ExecutionException;
 
 public class MainActivityCaller extends MainActivity {
     private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
@@ -34,8 +40,12 @@ public class MainActivityCaller extends MainActivity {
         @Override
         protected Void doInBackground(MainActivityCaller... mainActivities) {
             mainActivities[0].codes = APIConnector.GetTargetCodes();
+            if(tempCodes == null || tempCodes.length != mainActivities[0].codes.length)
+                tempCodes = mainActivities[0].codes;
+            mainActivities[0].targetMarkers = new Marker[tempCodes.length];
             System.out.println(mainActivities[0].codes);
 
+            mainActivities[0].names = APIConnector.GetTargetNames();
             mainActivities[0].setupPhonesList();
             mainActivities[0].sendContacts();
 
@@ -85,8 +95,14 @@ public class MainActivityCaller extends MainActivity {
     private RecyclerView recyclerView;
     private RecyclerViewAdapterPhones rvAdapter;
 
+    private Marker[] targetMarkers; // of current locations
+
+    String[] names;
     private int[] codes;
-    private int currentIndex = -1; // Selected phone's index from the list
+    private static int[] tempCodes; // is used when sending & receiving SMS, as the SMS will contain the old code
+    private int currentIndex; // Selected phone's index from the list
+
+    private AsyncTask firstTask;
 
 
     @Override
@@ -107,11 +123,16 @@ public class MainActivityCaller extends MainActivity {
         }
 
         getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
+        getSupportFragmentManager().executePendingTransactions();
+        System.out.println(getSupportFragmentManager());
+        System.out.println(getSupportFragmentManager().findFragmentById(R.id.fragmentContainerView2));
+        System.out.println(this);
 
 
         recyclerView = findViewById(R.id.phones_list);
+        currentIndex = -1;
 
-        new FirstOperationsTask().execute(this);
+        firstTask = new FirstOperationsTask().execute(this);
     }
 
     public void sendContacts(){
@@ -137,15 +158,14 @@ public class MainActivityCaller extends MainActivity {
     }
 
     private void setupPhonesList(){
-        String[] names = APIConnector.GetTargetNames();
-
-        rvAdapter = new RecyclerViewAdapterPhones(this, names);
+        rvAdapter = new RecyclerViewAdapterPhones(this, names, currentIndex);
         recyclerView.setAdapter(rvAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
     }
 
     public void onPhoneSelected(int index){ // The index of the phone in the phones list
         currentIndex = index;
+        moveMapCamera(false, targetMarkers[index]);
 
         new PhoneSelectedTask().execute(this);
     }
@@ -201,5 +221,99 @@ public class MainActivityCaller extends MainActivity {
                 lookupMarker = null;
             }
         }
+    }
+
+    private void targetLocationUpdated(int index, LatLng current){
+        if(targetMarkers[index] != null)
+            targetMarkers[index].remove();
+
+        targetMarkers[index] = gMap.addMarker(new MarkerOptions().position(current)
+                .icon(BitmapDescriptorFactory
+                        .defaultMarker(BitmapDescriptorFactory.HUE_VIOLET))
+                .title(names[index] + " is here").draggable(false));
+    }
+
+    public static void changeSearchedPhoneLocation(int targetCode, String currentLoc, String locsList){
+        // I added this 'while' due to the fact that this method runs before the 'currentMainActivity' variable changes
+        while(currentMainActivity.isDestroyed()){
+            System.out.print("currentMainActivity is null-");
+        }
+        // The described occurrence above happens because, as the SMS receiver starts the activity
+        // and after that calls this method (asynchronously), only the window opens up, while
+        // the activity is still not created! This happens because while this method runs on another
+        // thread, the activity creates after the Android system finishes executing the
+        // receiver method (the one that starts the activity and runs this method).
+        // And because of that, the 'currentMainActivity' variable still hasn't changed
+        // to the new activity!
+
+        MainActivityCaller main = (MainActivityCaller) currentMainActivity;
+        try {
+            // If the activity is just being created, firstTask would still be null
+            System.out.println("\nfirstTask cycle started");
+            while(main.firstTask == null || main.gMap == null){
+                System.out.print("firstTask or gMap is null-");
+            }
+            main.firstTask.get();
+            System.out.println("\nfirstTask finished");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        int index = -1;
+        for(int i = 0; i < main.codes.length; i++){
+            if(targetCode == main.codes[i]){
+                index = i;
+                break;
+            }
+        }
+
+
+        String[] currentElements = currentLoc.split(";");
+        if(currentElements.length > 1) {
+            double currentLat = Double.parseDouble(currentElements[0]);
+            double currentLng = Double.parseDouble(currentElements[1]);
+
+            int finalIndex = index;
+            main.runOnUiThread(() -> main.targetLocationUpdated(finalIndex, new LatLng(currentLat, currentLng)));
+        }
+
+
+        String[] locsListArr = locsList.split("\n");
+        if(locsListArr[0].length() == 0)
+            return;
+
+        for(String loc : locsListArr){
+            String[] elements = loc.split(";");
+            String capTime = elements[3];
+            if(capTimes.contains(capTime))
+                continue;
+
+            double lat = Double.parseDouble(elements[0]);
+            double lng = Double.parseDouble(elements[1]);
+            int image = Integer.parseInt(elements[2]);
+
+
+            latitudes.add(lat);
+            longitudes.add(lng);
+            images.add(image);
+            capTimes.add(capTime);
+        }
+
+        APIConnector.SendLocationsList(targetCode, latitudes, longitudes, images, capTimes);
+
+
+        main.currentIndex = index;
+        int finalIndex1 = index;
+        main.runOnUiThread(() -> {
+            main.setupPhonesList();
+            main.onPhoneSelected(finalIndex1);
+            main.showLocationsList();
+        });
+
+        /*boolean applicationOff = dbHelper == null;
+        if(applicationOff)
+            initializeDB();
+
+        saveAllLocations();*/
     }
 }

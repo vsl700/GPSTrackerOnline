@@ -62,9 +62,9 @@ public class SMSReceiver extends BroadcastReceiver {
             if (!data.contains(MainActivity.systemName))
                 return;
 
+            int indexOfCode = data.indexOf("Code:");
+            String sentCode = data.substring(data.indexOf(':', indexOfCode) + 1, data.indexOf('\n', indexOfCode));
             if (data.contains(MainActivity.smsServiceRequest)) {
-                int indexOfCode = data.indexOf("Code:");
-                String sentCode = data.substring(data.indexOf(':', indexOfCode) + 1, data.indexOf('\n', indexOfCode));
                 String actualCode = LoginWayActivity.getLoggedTargetCode() + "";
                 if (sentCode.equals(actualCode)) { // To verify that the message is not a... prank
                     LocationManager lm = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
@@ -135,10 +135,9 @@ public class SMSReceiver extends BroadcastReceiver {
                     } else if (returnSms) {
                         ExecutorService threadPool = Executors.newCachedThreadPool();
                         boolean finalGps_enabled = gps_enabled;
-                        boolean finalNetwork_enabled = network_enabled;
                         String finalFrom = from;
                         threadPool.submit(() -> {
-                            if(finalGps_enabled || finalNetwork_enabled) {
+                            if(finalGps_enabled || network_enabled) {
                                 int timeout = 60;
                                 while (TrackerService.prevLoc == null && timeout > 0) {
                                     try {
@@ -159,7 +158,7 @@ public class SMSReceiver extends BroadcastReceiver {
                             String locList = getLocationsDataList();
 
                             String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s\n\n%s\n%s\n\n%s", MainActivity.systemName, MainActivity.smsServiceResponse, sentCode, currentLocTag, currentLoc,
-                                    locListTag, locList, finalGps_enabled || finalNetwork_enabled);
+                                    locListTag, locList, finalGps_enabled || network_enabled);
                             SmsManager smsManager = SmsManager.getDefault();
                             smsManager.sendMultipartTextMessage(finalFrom, null, smsManager.divideMessage(message), null, null);
 
@@ -169,7 +168,7 @@ public class SMSReceiver extends BroadcastReceiver {
                         });
                     }
                 }
-            } else if (data.contains(MainActivity.smsServiceResponse)) {
+            } else if (data.contains(MainActivity.smsServiceResponse) && LoginWayActivity.loggedInCaller) {
                 if(MainActivityCaller.currentMainActivity.isDestroyed()){
                     context.startActivity(new Intent(context, MainActivityCaller.class));
                 }
@@ -182,7 +181,20 @@ public class SMSReceiver extends BroadcastReceiver {
                 String currentStr = data.substring(data.indexOf(currentLocTag) + currentLocTag.length() + 1, data.indexOf(locListTag) - 2);
                 String locListStr = data.substring(x, y);
 
-                MainActivity.changeSearchedPhoneLocation(currentStr, locListStr);
+                // Two reasons for running this method asynchronously:
+                // - there's a networking operation inside it
+                // - unless the method, containing this comment and all the other stuff, has finished
+                // execution the main activity will not start and the 'while' loops inside the method below
+                // will turn into endless loops as they require the activity to be created
+                ExecutorService threadPool = Executors.newCachedThreadPool();
+                threadPool.submit(() -> {
+                    try{
+                        // If an exception is on another thread, it doesn't stop the application,
+                        // and also doesn't print out on the console without 'printStackTrace'
+                        MainActivityCaller.changeSearchedPhoneLocation(Integer.parseInt(sentCode), currentStr, locListStr);
+                    }catch (Exception e){e.printStackTrace();}
+                });
+
 
                 if(currentStr.contains(unavailableTag))
                     Toast.makeText(context, "Current location couldn't be accessed! Services unavailable!", Toast.LENGTH_LONG).show();

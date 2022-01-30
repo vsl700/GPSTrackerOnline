@@ -129,7 +129,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private static void initializeDB(){
+    protected static void initializeDB(){
         if(LoginWayActivity.dbHelper == null) {
             LoginWayActivity.dbHelper = new FeedReaderDbHelper(MainActivity.currentMainActivity);
         }
@@ -257,7 +257,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .title("You are here").draggable(false));
 
 
-        if(lookupMarkers != null)
+        if(lookupMarkers != null && LoginWayActivity.loggedInTarget)
             setupLookupMarkers();
 
         if(prevNull)
@@ -310,12 +310,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Iterator<Double> latIter = latitudes.listIterator();
         Iterator<Double> longIter = longitudes.listIterator();
         Iterator<String> capIter = capTimes.listIterator();
-        for(int i = 0; i < lookupMarkers.length; i++){
-            LatLng lookUp = new LatLng(latIter.next(), longIter.next());
-            lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
-                    .icon(BitmapDescriptorFactory
-                            .defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                    .title("A previous location (" + capIter.next() + ")").draggable(false));
+        synchronized (latIter) { // To clear out a bug with using these lists at the same time
+            synchronized (longIter) {
+                synchronized (capIter) {
+                    for (int i = 0; i < lookupMarkers.length; i++) {
+                        LatLng lookUp = new LatLng(latIter.next(), longIter.next());
+                        lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
+                                .icon(BitmapDescriptorFactory
+                                        .defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                                .title("A previous location (" + capIter.next() + ")").draggable(false));
+                    }
+                }
+            }
         }
     }
 
@@ -333,7 +339,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         moveMapCamera(zoom, currentMarker);
     }
 
-    private void moveMapCamera(boolean zoom, Marker marker){
+    protected void moveMapCamera(boolean zoom, Marker marker){
         if(marker != null) {
             if(zoom)
                 gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
@@ -435,10 +441,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         finish();
     }
 
-    private static void quitApplication(Context context){
+    private void quitApplication(Context context){
         context.stopService(locService);
         dbHelper.close();
         LoginWayActivity.dbHelper = dbHelper = null;
+
+        capTimes.clear();
+        images.clear();
+        latitudes.clear();
+        longitudes.clear();
 
         currentMainActivity.finish();
     }
@@ -474,46 +485,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .commit();
     }
 
-    public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
-        String[] currentElements = currentLoc.split(";");
-        if(currentElements.length > 1) {
-            double currentLat = Double.parseDouble(currentElements[0]);
-            double currentLng = Double.parseDouble(currentElements[1]);
 
-            MainActivity.currentMainActivity.locationUpdated(new LatLng(currentLat, currentLng));
-        }
-
-        String[] locsListArr = locsList.split("\n");
-        if(locsListArr[0].length() == 0)
-            return;
-
-        for(String loc : locsListArr){
-            String[] elements = loc.split(";");
-            String capTime = elements[3];
-            if(capTimes.contains(capTime))
-                continue;
-
-            double lat = Double.parseDouble(elements[0]);
-            double lng = Double.parseDouble(elements[1]);
-            int image = Integer.parseInt(elements[2]);
-
-
-            latitudes.add(lat);
-            longitudes.add(lng);
-            images.add(image);
-            capTimes.add(capTime);
-        }
-
-        boolean applicationOff = dbHelper == null;
-        if(applicationOff)
-            initializeDB();
-
-        saveAllLocations();
-
-        if(applicationOff){
-            dbHelper.close();
-            LoginWayActivity.dbHelper = dbHelper = null;
-        }
-    }
 
 }

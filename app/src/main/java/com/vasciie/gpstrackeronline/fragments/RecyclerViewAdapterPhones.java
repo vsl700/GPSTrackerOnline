@@ -17,11 +17,13 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
 
     private final MainActivityCaller main;
     private final String[] phones;
+    private final int selectionIndex;
 
 
-    public RecyclerViewAdapterPhones(MainActivityCaller main, String[] phones){
+    public RecyclerViewAdapterPhones(MainActivityCaller main, String[] phones, int selectionIndex){
         this.main = main;
         this.phones = phones;
+        this.selectionIndex = selectionIndex;
     }
 
     @NonNull
@@ -35,6 +37,8 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         holder.button.setText(phones[position]);
+        if(position == selectionIndex)
+            holder.select();
     }
 
     @Override
@@ -50,16 +54,19 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
         public Button button;
 
         private static ViewHolder previouslyClicked;
+        private MainActivityCaller main;
 
 
         public ViewHolder(@NonNull View itemView, MainActivityCaller main) {
             super(itemView);
+            this.main = main;
 
             button = itemView.findViewById(R.id.phone_item_button);
 
             button.setOnClickListener(view -> {
                 System.out.println(button.getText() + ": CLICK!");
 
+                main.onPhoneSelected(getAdapterPosition());
                 if(previouslyClicked != null){
                     if(previouslyClicked.equals(this))
                         return;
@@ -67,14 +74,16 @@ public class RecyclerViewAdapterPhones extends RecyclerView.Adapter<RecyclerView
                     previouslyClicked.deselect();
                 }
 
-                main.onPhoneSelected(getAdapterPosition());
-
-                previouslyClicked = this;
-                button.setBackgroundColor(button.getHighlightColor());
+                select();
             });
         }
 
-        public void deselect() {
+        private void select() {
+            previouslyClicked = this;
+            button.setBackgroundColor(button.getHighlightColor());
+        }
+
+        private void deselect() {
             button.setBackgroundColor(0xffffffff);
         }
     }

@@ -16,6 +16,8 @@ import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -235,6 +237,57 @@ public final class APIConnector {
 
 
             String jsonInput = contacts.toString();
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // Without asking for a response from the API method the method just doesn't work...
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void SendLocationsList(int targetCode, LinkedList<Double> lats, LinkedList<Double> longs, LinkedList<Integer> images, LinkedList<String> capTimes){
+        JSONArray locations = new JSONArray();
+        Iterator<Double> latIter = lats.listIterator();
+        Iterator<Double> longIter = longs.listIterator();
+        Iterator<Integer> imageIter = images.listIterator();
+        Iterator<String> capIter = capTimes.listIterator();
+        while(latIter.hasNext()){
+            double lat = latIter.next();
+            double lng = longIter.next();
+            int image = imageIter.next();
+            String capTime = capIter.next();
+
+            String data = lat + ";" + lng + ";" + image + ";" + capTime;
+            locations.put(data.replace(".", ","));
+        }
+
+        try {
+            URL url = new URL(primaryLink + "/api/target/locslist?targetCode=" + targetCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("POST");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+
+
+            String jsonInput = locations.toString();
             try (OutputStream os = connection.getOutputStream()) {
                 byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
