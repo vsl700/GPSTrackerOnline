@@ -10,6 +10,7 @@ import android.provider.ContactsContract;
 import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
@@ -40,6 +41,10 @@ public class MainActivityCaller extends MainActivity {
         @Override
         protected Void doInBackground(MainActivityCaller... mainActivities) {
             mainActivities[0].codes = APIConnector.GetTargetCodes();
+            if(mainActivities[0].codes == null){
+                mainActivities[0].runOnUiThread(() -> Toast.makeText(mainActivities[0], "Error! Try restarting the app!", Toast.LENGTH_LONG).show());
+                return null;
+            }
             if(tempCodes == null || tempCodes.length != mainActivities[0].codes.length)
                 tempCodes = mainActivities[0].codes;
             mainActivities[0].targetMarkers = new Marker[tempCodes.length];
@@ -192,22 +197,46 @@ public class MainActivityCaller extends MainActivity {
             if(ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
                 ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.SEND_SMS}, smsSendRequestCode);
             }
-            else openSMSDialog();
+            else {
+                openSMSDialog();
+            }
         }
 
         return super.onOptionsItemSelected(item);
     }
 
     private void openSMSDialog(){
+        if(currentIndex == -1){
+            Toast.makeText(this, "Please select a phone to send the SMS to!", Toast.LENGTH_LONG).show();
+            return;
+        }
         SMSDialog smsDialog = new SMSDialog();
         smsDialog.show(getSupportFragmentManager(), "sms_dialog");
     }
 
     public static void takeActionOnSmsSendRequest(boolean online, boolean sms){
-        String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, 123456,
+        MainActivityCaller main = (MainActivityCaller) currentMainActivity;
+        int oldCode = APIConnector.GetTargetOldCode(main.codes[main.currentIndex]);
+        String phoneNumber = APIConnector.GetTargetPhoneNumber(main.codes[main.currentIndex]);
+        if(phoneNumber == null){
+            main.runOnUiThread(() -> Toast.makeText(main, "Error! Try to restart the app!", Toast.LENGTH_LONG).show());
+            return;
+        }
+        if(phoneNumber.equals("-1")){
+            main.runOnUiThread(() -> Toast.makeText(main, "Phone Number is not set for this device!", Toast.LENGTH_LONG).show());
+            return;
+        }
+        String message = String.format("%s service %s:\nCode:%s\n\n%s\n%s", systemName, smsServiceRequest, oldCode,
                 online ? returnOnlineReq : "", sms ? returnSmsReq : "");
+
+        // Change the Target's code
+        int newCode = APIConnector.ChangeCodeRequest(oldCode);
+        if(newCode != -1) // If there's no fail connecting the API method
+            main.codes[main.currentIndex] = newCode;
+
+        // Send the SMS
         SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage("+16505551212", null, message, null, null);
+        smsManager.sendTextMessage(phoneNumber, null, message, null, null);
     }
 
     private void onAttachFragment(FragmentManager fragmentManager, Fragment fragment) {
@@ -260,8 +289,8 @@ public class MainActivityCaller extends MainActivity {
         }
 
         int index = -1;
-        for(int i = 0; i < main.codes.length; i++){
-            if(targetCode == main.codes[i]){
+        for(int i = 0; i < main.tempCodes.length; i++){
+            if(targetCode == main.tempCodes[i]){
                 index = i;
                 break;
             }

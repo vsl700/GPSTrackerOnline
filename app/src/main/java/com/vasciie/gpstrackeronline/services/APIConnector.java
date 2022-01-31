@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
  * Phone Tracker-Online API. This class cannot be extended or instantiated
  */
 public final class APIConnector {
-    public static final String primaryLink = "http://192.168.0.104";
+    public static final String primaryLink = "http://192.168.0.107";
 
 
     private APIConnector() {
@@ -307,5 +307,98 @@ public final class APIConnector {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static String GetTargetPhoneNumber(int targetCode){
+        try {
+            URL url = new URL(primaryLink + "/api/target/contact?targetCode=" + targetCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString().replace("\"", "");
+                System.out.println(responseStr);
+
+                return responseStr;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public static int GetTargetOldCode(int targetCode){
+        try {
+            URL url = new URL(primaryLink + "/api/target/oldcode?targetCode=" + targetCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+
+                return Integer.parseInt(responseStr);
+            }
+        } catch (IOException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+
+        return -1;
+    }
+
+    public static int ChangeCodeRequest(int targetCode){
+        try {
+            URL url = new URL(primaryLink + "/api/target/changecodereq?targetCode=" + targetCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+
+                return Integer.parseInt(responseStr);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return -1;
     }
 }

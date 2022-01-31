@@ -14,6 +14,9 @@ import androidx.appcompat.widget.SwitchCompat;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class SMSDialog extends AppCompatDialogFragment {
     @NonNull
     @Override
@@ -42,8 +45,10 @@ public class SMSDialog extends AppCompatDialogFragment {
         builder.setView(view)
                 .setTitle("Send SMS")
                 .setNegativeButton("Cancel", (dialog, which) -> {})
-                .setPositiveButton("Send!", (dialog, which) ->
-                        MainActivityCaller.takeActionOnSmsSendRequest(online.isChecked(), sms.isChecked()));
+                .setPositiveButton("Send!", (dialog, which) -> {
+                    ExecutorService threadPool = Executors.newCachedThreadPool();
+                    threadPool.submit(() -> MainActivityCaller.takeActionOnSmsSendRequest(online.isChecked(), sms.isChecked()));
+                });
 
 
         return builder.create();
