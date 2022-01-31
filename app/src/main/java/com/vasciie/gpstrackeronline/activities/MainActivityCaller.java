@@ -289,8 +289,8 @@ public class MainActivityCaller extends MainActivity {
         }
 
         int index = -1;
-        for(int i = 0; i < main.tempCodes.length; i++){
-            if(targetCode == main.tempCodes[i]){
+        for(int i = 0; i < tempCodes.length; i++){
+            if(targetCode == tempCodes[i]){
                 index = i;
                 break;
             }

@@ -210,6 +210,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         // Gets the data repository in write mode
+        if(dbHelper == null)
+            initializeDB();
+
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // Create a new map of values, where column names are the keys
