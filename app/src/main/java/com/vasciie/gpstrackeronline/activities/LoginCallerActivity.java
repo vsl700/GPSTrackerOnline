@@ -72,7 +72,7 @@ public class LoginCallerActivity extends AppCompatActivity {
         return true;
     }
 
-    private void loginSuccess(){
+    private synchronized void loginSuccess(){
         // This method is sometimes being invoked twice when logging in with the 'Enter' key
         // (on keyDown and on keyUp events from the OnEditorAction)
         if(LoginWayActivity.loggedInCaller)

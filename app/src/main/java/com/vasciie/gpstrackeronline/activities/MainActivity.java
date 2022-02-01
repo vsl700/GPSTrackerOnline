@@ -7,6 +7,10 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.Menu;
@@ -32,6 +36,7 @@ import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
 import com.vasciie.gpstrackeronline.fragments.LocationsListFragment;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.text.SimpleDateFormat;
@@ -49,8 +54,54 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         @Override
         protected Void doInBackground(MainActivity... mainActivities) {
+            int oldCode = LoginWayActivity.getLoggedTargetCode();
+            int newCode = APIConnector.GetTargetNewCode(oldCode);
+            if(oldCode != newCode){
+                saveCodeToDB(newCode);
+            }
+
             return null;
         }
+
+        private void saveCodeToDB(int code){
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
+
+            ContentValues values = new ContentValues();
+            values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code);
+
+            db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
+        }
+    }
+    private static class NetworkCallback extends ConnectivityManager.NetworkCallback{
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+            new FirstOperationsTask().execute(MainActivity.currentMainActivity);
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onConnected();
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onDisconnected();
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+            /*boolean hasCellular = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR);
+            boolean hasWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);*/
+        }
+    }
+    public interface OuterNetworkCallback{
+        void onConnected();
+        void onDisconnected();
     }
 
 
@@ -60,6 +111,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected Marker[] lookupMarkers;
 
     public static Intent locService;
+
+    protected static ConnectivityManager cm;
+    protected NetworkRequest networkRequest;
+    protected static ConnectivityManager.NetworkCallback networkCallback;
+
+    public OuterNetworkCallback outerNetworkCallback;
 
     protected static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
     public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
@@ -128,6 +185,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
         }
+
+        networkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build();
+        cm = getSystemService(ConnectivityManager.class);
+
+        if(!(this instanceof MainActivityCaller)){
+            if(cm != null)
+                cm.unregisterNetworkCallback(networkCallback);
+
+            networkCallback = new NetworkCallback();
+        }
+        cm.requestNetwork(networkRequest, networkCallback);
     }
 
     protected static void initializeDB(){
@@ -406,6 +478,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         super.onDestroy();
 
+        //cm.unregisterNetworkCallback(networkCallback);
         System.out.println("MainActivity destroyed");
     }
 

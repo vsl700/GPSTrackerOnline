@@ -33,7 +33,6 @@ public class NoInternetDialog extends AppCompatDialogFragment {
                 .setTitle("No Internet!");
 
         builder.setOnKeyListener((arg0, keyCode, event) -> {
-            // TODO Auto-generated method stub
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 dismiss();
                 MainActivity.currentMainActivity.finish();

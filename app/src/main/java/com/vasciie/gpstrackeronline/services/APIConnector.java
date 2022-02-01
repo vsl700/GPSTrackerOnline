@@ -1,14 +1,11 @@
 package com.vasciie.gpstrackeronline.services;
 
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.CookieManager;
@@ -20,9 +17,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This is a helper class, providing the needed methods for accessing and using the
@@ -76,7 +70,7 @@ public final class APIConnector {
 
                 return Boolean.parseBoolean(responseStr);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -104,7 +98,7 @@ public final class APIConnector {
 
                 return Boolean.parseBoolean(responseStr);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -141,7 +135,7 @@ public final class APIConnector {
 
                 return codes;
             }
-        } catch (IOException | JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -178,7 +172,7 @@ public final class APIConnector {
 
                 return names;
             }
-        } catch (IOException | JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -215,7 +209,7 @@ public final class APIConnector {
 
                 return names;
             }
-        } catch (IOException | JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -253,7 +247,7 @@ public final class APIConnector {
                 String responseStr = response.toString();
                 System.out.println(responseStr);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -304,7 +298,7 @@ public final class APIConnector {
                 String responseStr = response.toString();
                 System.out.println(responseStr);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -333,7 +327,7 @@ public final class APIConnector {
 
                 return responseStr;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -364,7 +358,7 @@ public final class APIConnector {
 
                 return Integer.parseInt(responseStr);
             }
-        } catch (IOException | NumberFormatException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -395,7 +389,38 @@ public final class APIConnector {
 
                 return Integer.parseInt(responseStr);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return -1;
+    }
+
+    public static int GetTargetNewCode(int targetCode){
+        try {
+            URL url = new URL(primaryLink + "/api/target/code?oldCode=" + targetCode);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+            if(cookieManager.getCookieStore().getCookies().size() > 0){
+                connection.setRequestProperty("Cookie", TextUtils.join(";",  cookieManager.getCookieStore().getCookies()));
+            }
+
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+
+                return Integer.parseInt(responseStr);
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

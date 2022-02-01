@@ -1,18 +1,13 @@
 package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.ActivityOptions;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.transition.Slide;
 import android.view.Gravity;
 import android.view.View;
@@ -94,10 +89,8 @@ public class LoginWayActivity extends AppCompatActivity {
         currentLoginWayActivity = this;
 
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
-            getWindow().setExitTransition(new Slide(Gravity.START));
-        }
+        getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
+        getWindow().setExitTransition(new Slide(Gravity.START));
 
         setContentView(R.layout.activity_login); // Because of the animation feature above
 
@@ -105,14 +98,10 @@ public class LoginWayActivity extends AppCompatActivity {
         entryProgressBar = findViewById(R.id.progressBar_entry);
 
         loginCallerBtn = findViewById(R.id.caller_login_btn);
-        loginCallerBtn.setOnClickListener(view -> {
-            startOtherActivity(LoginCallerActivity.class);
-        });
+        loginCallerBtn.setOnClickListener(view -> startOtherActivity(LoginCallerActivity.class));
 
         loginTargetBtn = findViewById(R.id.target_login_btn);
-        loginTargetBtn.setOnClickListener(view -> {
-            startOtherActivity(LoginTargetActivity.class);
-        });
+        loginTargetBtn.setOnClickListener(view -> startOtherActivity(LoginTargetActivity.class));
 
         if(checkLogin)
             new LoginCheckTask().execute(this);
@@ -259,11 +248,7 @@ public class LoginWayActivity extends AppCompatActivity {
 
     private void startOtherActivity(Class<?> cls){
         Intent intent = new Intent(this, cls);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
-        }else{
-            startActivity(intent);
-        }
+        startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
     }
 
     /*public static boolean LoggedIn(){

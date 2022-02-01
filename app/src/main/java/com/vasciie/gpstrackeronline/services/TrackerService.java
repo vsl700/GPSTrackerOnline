@@ -10,7 +10,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -25,15 +24,12 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
-import android.provider.ContactsContract;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
-import androidx.lifecycle.Lifecycle;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -50,18 +46,12 @@ import com.microsoft.signalr.HubConnectionState;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
-import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
-import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
 import java.util.Random;
 
-public class TrackerService extends Service {
-    static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
+public class TrackerService extends Service implements MainActivity.OuterNetworkCallback {
+    private class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
 
         public HubConnectionTask(){super();} // To prevent a Deprecation warning
 
@@ -123,7 +113,6 @@ public class TrackerService extends Service {
     private static final class ServiceHandler extends Handler {
         private final TrackerService locService;
         private final Random r;
-        private NoInternetDialog noInternetDialog;
 
         public ServiceHandler(TrackerService locService, Looper looper) {
             super(looper);
@@ -193,17 +182,6 @@ public class TrackerService extends Service {
                     else{
                         locService.stopLocationUpdatesInternetOnly();
                         locService.startLocationUpdates();
-
-                        if(TrackerService.main instanceof MainActivityCaller && TrackerService.main.getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED)) {
-                            if (!locService.isNetworkEnabled()) {
-                                if (TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") == null) {
-                                    noInternetDialog = new NoInternetDialog();
-                                    noInternetDialog.show(TrackerService.main.getSupportFragmentManager(), "no_internet");
-                                }
-                            } else if (noInternetDialog != null && TrackerService.main.getSupportFragmentManager().findFragmentByTag("no_internet") != null) {
-                                noInternetDialog.dismiss();
-                            }
-                        }
                     }
                 }
 
@@ -272,7 +250,6 @@ public class TrackerService extends Service {
             }
         };
 
-
         hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=vsl700").build();
         hubConnection.on("sendToUser", (user, message) -> main.runOnUiThread(() -> {
             System.out.println("User: " + user);
@@ -297,6 +274,16 @@ public class TrackerService extends Service {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
+    @Override
+    public void onConnected() {
+        startHubConnection();
+    }
+
+    @Override
+    public void onDisconnected() {
+        stopHubConnection();
+    }
+
     private void makeUseOfNewLoc() {
         if (!main.isDestroyed())
             main.locationUpdated(prevLoc);
@@ -312,12 +299,9 @@ public class TrackerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
+        main.outerNetworkCallback = this;
 
-        if(!isOnline) {
-            new HubConnectionTask().execute(hubConnection);
-            hubConnection.onClosed(Throwable::printStackTrace);
-            isOnline = true;
-        }
+        startHubConnection();
 
         if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
@@ -444,6 +428,14 @@ public class TrackerService extends Service {
 
         lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         updatesOn = internetUpdatesOn = true;
+    }
+
+    private void startHubConnection() {
+        if(!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
+            new HubConnectionTask().execute(hubConnection);
+            hubConnection.onClosed(Throwable::printStackTrace);
+            isOnline = true;
+        }
     }
 
     private void stopLocationUpdates() {

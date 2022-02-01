@@ -4,6 +4,10 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.ContactsContract;
@@ -12,9 +16,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Lifecycle;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -25,13 +31,17 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
+import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 import com.vasciie.gpstrackeronline.services.APIConnector;
+import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import org.json.JSONObject;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivityCaller extends MainActivity {
     private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
@@ -42,7 +52,7 @@ public class MainActivityCaller extends MainActivity {
         protected Void doInBackground(MainActivityCaller... mainActivities) {
             mainActivities[0].codes = APIConnector.GetTargetCodes();
             if(mainActivities[0].codes == null){
-                mainActivities[0].runOnUiThread(() -> Toast.makeText(mainActivities[0], "Error! Try restarting the app!", Toast.LENGTH_LONG).show());
+                mainActivities[0].runOnUiThread(() -> Toast.makeText(mainActivities[0], "Error! Try restarting the app or check your connection!", Toast.LENGTH_LONG).show());
                 return null;
             }
             if(tempCodes == null || tempCodes.length != mainActivities[0].codes.length)
@@ -51,8 +61,9 @@ public class MainActivityCaller extends MainActivity {
             System.out.println(mainActivities[0].codes);
 
             mainActivities[0].names = APIConnector.GetTargetNames();
-            mainActivities[0].setupPhonesList();
             mainActivities[0].sendContacts();
+
+            mainActivities[0].runOnUiThread(() -> mainActivities[0].setupPhonesList());
 
             return null;
         }
@@ -95,10 +106,41 @@ public class MainActivityCaller extends MainActivity {
             return null;
         }
     }
+    private static class NetworkCallback extends ConnectivityManager.NetworkCallback{
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+            ((MainActivityCaller) currentMainActivity).syncWithInternet();
+            ((MainActivityCaller) currentMainActivity).dismissNoInternet();
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onConnected();
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+
+            ((MainActivityCaller) currentMainActivity).showNoInternet(true);
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onDisconnected();
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+            /*boolean hasCellular = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR);
+            boolean hasWifi = networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI);*/
+        }
+    }
 
 
     private RecyclerView recyclerView;
     private RecyclerViewAdapterPhones rvAdapter;
+
+    private NoInternetDialog noInternetDialog;
 
     private Marker[] targetMarkers; // of current locations
 
@@ -112,6 +154,10 @@ public class MainActivityCaller extends MainActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if(cm != null)
+            cm.unregisterNetworkCallback(networkCallback);
+        networkCallback = new NetworkCallback();
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_caller);
 
@@ -137,6 +183,30 @@ public class MainActivityCaller extends MainActivity {
         recyclerView = findViewById(R.id.phones_list);
         currentIndex = -1;
 
+        NetworkInfo activeNetworkInfo = cm.getActiveNetworkInfo();
+        if(activeNetworkInfo == null || !activeNetworkInfo.isConnected()) {
+            showNoInternet(false);
+        }
+    }
+
+    private void showNoInternet(boolean check){
+        if(getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED) || !check) {
+            try{
+                noInternetDialog = new NoInternetDialog();
+                noInternetDialog.show(getSupportFragmentManager(), "no_internet");
+            }catch (Exception e) {e.printStackTrace();}
+        }
+    }
+
+    private void dismissNoInternet(){
+        if (noInternetDialog != null && getSupportFragmentManager().findFragmentByTag("no_internet") != null) {
+            try {
+                noInternetDialog.dismiss();
+            }catch (Exception e) {e.printStackTrace();}
+        }
+    }
+
+    public void syncWithInternet(){
         firstTask = new FirstOperationsTask().execute(this);
     }
 
@@ -179,7 +249,10 @@ public class MainActivityCaller extends MainActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        rvAdapter.onDestroy();
+        if(rvAdapter != null)
+            rvAdapter.onDestroy();
+
+        dismissNoInternet();
     }
 
     @Override

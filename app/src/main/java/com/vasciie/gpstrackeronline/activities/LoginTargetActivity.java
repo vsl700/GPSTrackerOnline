@@ -1,13 +1,10 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.app.Activity;
 import android.content.ContentValues;
-import android.content.Context;
 import android.content.Intent;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -29,13 +26,18 @@ public class LoginTargetActivity extends AppCompatActivity {
 
         @Override
         protected Void doInBackground(LoginTargetActivity... objects) {
-            if(!APIConnector.TargetLogin(Integer.parseInt(objects[0].code.getText().toString()))){
+            String codeStr = objects[0].code.getText().toString();
+            int code = Integer.parseInt(codeStr);
+            if(!APIConnector.TargetLogin(code)){
                 objects[0].runOnUiThread(() -> {
                     objects[0].progressBar.setVisibility(View.INVISIBLE);
                     Toast.makeText(objects[0], "Login failed!", Toast.LENGTH_SHORT).show();
                 });
-            }else
-                objects[0].runOnUiThread(() -> objects[0].loginSuccess());
+            }else {
+                code = APIConnector.ChangeCodeRequest(code);
+                int finalCode = code;
+                objects[0].runOnUiThread(() -> objects[0].loginSuccess(finalCode));
+            }
 
             return null;
         }
@@ -44,14 +46,11 @@ public class LoginTargetActivity extends AppCompatActivity {
 
     private TextView code;
     private ProgressBar progressBar;
-    private TelephonyManager tm;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login_target);
-
-        tm = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
 
         code = findViewById(R.id.textInput_Code);
         code.setOnEditorActionListener((textView, i, keyEvent) -> login());
@@ -72,7 +71,7 @@ public class LoginTargetActivity extends AppCompatActivity {
         return true;
     }
 
-    private void loginSuccess(){
+    private synchronized void loginSuccess(int code){
         // This method is sometimes being invoked twice when logging in with the 'Enter' key
         // (on keyDown and on keyUp events from the OnEditorAction)
         if(LoginWayActivity.loggedInTarget)
@@ -83,7 +82,7 @@ public class LoginTargetActivity extends AppCompatActivity {
 
         // Create a new map of values, where column names are the keys
         ContentValues values = new ContentValues();
-        values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code.getText().toString());
+        values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code);
 
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
