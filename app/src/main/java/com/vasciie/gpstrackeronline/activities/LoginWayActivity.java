@@ -6,6 +6,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.transition.Slide;
@@ -47,10 +51,33 @@ public class LoginWayActivity extends AppCompatActivity {
             return null;
         }
     }
+    private static class NetworkCallback extends ConnectivityManager.NetworkCallback{
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+            if(currentLoginWayActivity != null)
+                new LoginCheckTask().execute(currentLoginWayActivity);
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+        }
+    }
 
 
     private ProgressBar entryProgressBar;
     private Button loginCallerBtn, loginTargetBtn;
+
+    private ConnectivityManager cm;
+    private NetworkRequest networkRequest;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     public static FeedReaderDbHelper dbHelper;
     public static LoginWayActivity currentLoginWayActivity;
@@ -92,7 +119,7 @@ public class LoginWayActivity extends AppCompatActivity {
         getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
         getWindow().setExitTransition(new Slide(Gravity.START));
 
-        setContentView(R.layout.activity_login); // Because of the animation feature above
+        setContentView(R.layout.activity_login); // Here because of the animation feature above
 
 
         entryProgressBar = findViewById(R.id.progressBar_entry);
@@ -103,7 +130,17 @@ public class LoginWayActivity extends AppCompatActivity {
         loginTargetBtn = findViewById(R.id.target_login_btn);
         loginTargetBtn.setOnClickListener(view -> startOtherActivity(LoginTargetActivity.class));
 
-        if(checkLogin)
+        networkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build();
+        networkCallback = new NetworkCallback();
+
+        cm = getSystemService(ConnectivityManager.class);
+        cm.requestNetwork(networkRequest, networkCallback);
+
+        if(checkLogin && cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isConnected())
             new LoginCheckTask().execute(this);
     }
 
@@ -260,6 +297,7 @@ public class LoginWayActivity extends AppCompatActivity {
         super.onDestroy();
 
         currentLoginWayActivity = null;
+        cm.unregisterNetworkCallback(networkCallback);
     }
 
     @Override
