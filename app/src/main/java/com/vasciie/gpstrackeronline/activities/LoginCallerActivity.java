@@ -73,7 +73,8 @@ public class LoginCallerActivity extends AppCompatActivity {
     }
 
     private void loginSuccess(){
-        // For some reason this method is being invoked twice by the Android's junk system
+        // This method is sometimes being invoked twice when logging in with the 'Enter' key
+        // (on keyDown and on keyUp events from the OnEditorAction)
         if(LoginWayActivity.loggedInCaller)
             return;
 
