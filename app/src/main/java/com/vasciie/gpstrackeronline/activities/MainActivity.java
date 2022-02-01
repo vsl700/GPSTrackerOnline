@@ -161,12 +161,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
             readLocationsFromDB();
-
-
-            startServices();
         }
 
         currentMainActivity = this;
+        startServices();
 
         if(!(this instanceof MainActivityCaller)) {
             if (savedInstanceState == null) {

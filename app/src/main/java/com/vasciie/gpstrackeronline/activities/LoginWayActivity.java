@@ -23,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
@@ -174,11 +175,17 @@ public class LoginWayActivity extends AppCompatActivity {
         }
     }
 
-    private void startMainActivity(){
+    private boolean canStartMainActivity = true;
+    private synchronized void startMainActivity(){
+        if(!canStartMainActivity)
+            return;
+
         Intent intent = new Intent(this, loggedInCaller ? MainActivityCaller.class : MainActivity.class);
         startActivity(intent);
 
         finish();
+
+        canStartMainActivity = false;
     }
 
     public static boolean checkLoggedIn(boolean startup){
@@ -297,7 +304,9 @@ public class LoginWayActivity extends AppCompatActivity {
         super.onDestroy();
 
         currentLoginWayActivity = null;
-        cm.unregisterNetworkCallback(networkCallback);
+
+        if(cm != null)
+            cm.unregisterNetworkCallback(networkCallback);
     }
 
     @Override
