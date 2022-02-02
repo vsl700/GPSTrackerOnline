@@ -63,6 +63,9 @@ public class MainActivityCaller extends MainActivity {
             mainActivities[0].names = APIConnector.GetTargetNames();
             mainActivities[0].sendContacts();
 
+            if(mainActivities[0].currentIndex != -1)
+                APIConnector.SendLocationsList(mainActivities[0].codes[mainActivities[0].currentIndex], latitudes, longitudes, images, capTimes);
+
             mainActivities[0].runOnUiThread(() -> mainActivities[0].setupPhonesList());
 
             return null;

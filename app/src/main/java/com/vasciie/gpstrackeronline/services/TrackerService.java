@@ -46,6 +46,7 @@ import com.microsoft.signalr.HubConnectionState;
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
+import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
 import java.util.Random;
@@ -124,6 +125,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         @Override
         public void handleMessage(@NonNull Message msg) {
             System.out.println("Service Loop");
+            long normalMillis = 1000;
 
             // We don't make use of the LocationRequest's time interval properties due to the fact
             // that some phones literally stop the updates when the app is closed and only the
@@ -133,6 +135,16 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                 if (!isLocationActivelyUsed()) {
                     locService.stopLocationUpdates();
                     locService.stopLocationUpdatesInternetOnly();
+
+                    if(LoginWayActivity.loggedInCaller) {
+                        try {
+                            Thread.sleep(normalMillis);
+                            continue;
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            return;
+                        }
+                    }
 
                     try {
                         int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
@@ -186,7 +198,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                 }
 
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(normalMillis);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     return;
@@ -308,7 +320,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
 
-            Intent notificationIntent = new Intent(this, MainActivity.class);
+            Intent notificationIntent = new Intent(this, LoginWayActivity.loggedInCaller ? MainActivityCaller.class : MainActivity.class);
             PendingIntent pendingIntent =
                     PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
@@ -347,11 +359,6 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
             startForeground(12893, notification);
         }
-
-        if(isGPSEnabled())
-             startLocationUpdates();
-        else if(isNetworkEnabled())
-            startLocationUpdatesInternetOnly();
 
         return START_STICKY;
     }

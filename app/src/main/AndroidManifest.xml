@@ -24,22 +24,22 @@
         android:theme="@style/Theme.GPSTrackerOnline"
         android:usesCleartextTraffic="true"
         tools:targetApi="m">
-        <activity
-            android:name=".activities.MainActivityCaller"
-            android:exported="true" />
-
         <service
             android:name=".services.TrackerService"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name=".services.LocationService" />
+                <action android:name=".services.TrackerService" />
             </intent-filter>
         </service>
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBj0dL42YYAWUACSkQ4ZHUhPoRuuPdcBB8" />
+
+        <activity
+            android:name=".activities.MainActivityCaller"
+            android:exported="true" />
 
         <activity
             android:name=".activities.MainActivity"
