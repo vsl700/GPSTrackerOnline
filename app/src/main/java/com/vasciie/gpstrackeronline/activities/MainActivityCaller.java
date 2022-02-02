@@ -376,6 +376,8 @@ public class MainActivityCaller extends MainActivity {
             }
         }
 
+        if(index == -1)
+            return;
 
         String[] currentElements = currentLoc.split(";");
         if(currentElements.length > 1) {
