@@ -48,19 +48,10 @@ import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class TrackerService extends Service {
-    static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
+public class TrackerService extends Service implements MainActivity.OuterNetworkCallback {
+    private class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
 
         public HubConnectionTask(){super();} // To prevent a Deprecation warning
 
@@ -74,7 +65,6 @@ public class TrackerService extends Service {
             HubConnection hubConnection = hubConnections[0];
             try {
                 hubConnection.start().blockingAwait();
-                isOnline = true;
 
                 if(!alive) {
                     if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
@@ -84,6 +74,7 @@ public class TrackerService extends Service {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
+                isOnline = false;
             }
 
             System.out.println(hubConnection.getConnectionId());
@@ -105,7 +96,7 @@ public class TrackerService extends Service {
     public LocationListener locationListener;
 
     private HubConnection hubConnection;
-    private static final String primaryLink = "http://192.168.0.107:80";
+    private static final String primaryLink = APIConnector.primaryLink;
 
     // The access to the activity functions and public application fields
     public static MainActivity main;
@@ -259,7 +250,6 @@ public class TrackerService extends Service {
             }
         };
 
-
         hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=vsl700").build();
         hubConnection.on("sendToUser", (user, message) -> main.runOnUiThread(() -> {
             System.out.println("User: " + user);
@@ -284,6 +274,16 @@ public class TrackerService extends Service {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
+    @Override
+    public void onConnected() {
+        startHubConnection();
+    }
+
+    @Override
+    public void onDisconnected() {
+        stopHubConnection();
+    }
+
     private void makeUseOfNewLoc() {
         if (!main.isDestroyed())
             main.locationUpdated(prevLoc);
@@ -299,44 +299,9 @@ public class TrackerService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
+        main.outerNetworkCallback = this;
 
-        if(!isOnline) {
-            new HubConnectionTask().execute(hubConnection);
-            hubConnection.onClosed(Throwable::printStackTrace);
-
-            if(LoginWayActivity.loggedInCaller){
-                ExecutorService threadPool = Executors.newCachedThreadPool();
-                threadPool.submit(() -> {
-                    try {
-                        URL url = new URL(primaryLink + "/api/caller");
-                        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                        connection.setConnectTimeout(5000);
-                        connection.setRequestMethod("POST");
-                        connection.setRequestProperty("Content-Type", "application/json; utf-8");
-                        connection.setRequestProperty("Accept", "application/json");
-                        connection.setDoOutput(true);
-
-                        String jsonInput = "[\"vsl700\", \"stBG3541!\"]";
-                        try(OutputStream os = connection.getOutputStream()) {
-                            byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
-                            os.write(input, 0, input.length);
-                        }
-
-                        try(BufferedReader br = new BufferedReader(
-                                new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                            StringBuilder response = new StringBuilder();
-                            String responseLine;
-                            while ((responseLine = br.readLine()) != null) {
-                                response.append(responseLine.trim());
-                            }
-                            System.out.println(response.toString());
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-            }
-        }
+        startHubConnection();
 
         if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
@@ -463,6 +428,14 @@ public class TrackerService extends Service {
 
         lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
         updatesOn = internetUpdatesOn = true;
+    }
+
+    private void startHubConnection() {
+        if(!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
+            new HubConnectionTask().execute(hubConnection);
+            hubConnection.onClosed(Throwable::printStackTrace);
+            isOnline = true;
+        }
     }
 
     private void stopLocationUpdates() {

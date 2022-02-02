@@ -72,10 +72,7 @@ public class ButtonsFragment extends Fragment {
 
         Button locationsListBtn = v.findViewById(R.id.locsList);
         locationsListBtn.setOnClickListener(view -> {
-            main.getSupportFragmentManager().beginTransaction()
-                    .setReorderingAllowed(true)
-                    .replace(LoginWayActivity.loggedInCaller ? R.id.fragmentContainerView2 : R.id.fragmentContainerView, LocationsListFragment.class, null)
-                    .commit();
+            main.showLocationsList();
         });
 
         Button currentLocBtn = v.findViewById(R.id.currentLoc);

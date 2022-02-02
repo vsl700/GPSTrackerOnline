@@ -1,6 +1,5 @@
 package com.vasciie.gpstrackeronline.activities;
 
-import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -8,16 +7,20 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.telephony.SmsManager;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.Lifecycle;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -32,6 +35,8 @@ import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
 import com.vasciie.gpstrackeronline.fragments.ButtonsFragment;
+import com.vasciie.gpstrackeronline.fragments.LocationsListFragment;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import java.text.SimpleDateFormat;
@@ -41,8 +46,66 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+    private static class FirstOperationsTask extends AsyncTask<MainActivity, Void, Void>{
+
+        public FirstOperationsTask(){super();}
+
+        @Override
+        protected Void doInBackground(MainActivity... mainActivities) {
+            int oldCode = LoginWayActivity.getLoggedTargetCode();
+            int newCode = APIConnector.GetTargetNewCode(oldCode);
+            if(oldCode != newCode && newCode != -1){
+                saveCodeToDB(newCode);
+            }
+
+            APIConnector.SendLocationsList(newCode, latitudes, longitudes, images, capTimes);
+
+            return null;
+        }
+
+        private void saveCodeToDB(int code){
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
+
+            ContentValues values = new ContentValues();
+            values.put(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE, code);
+
+            db.insert(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, values);
+        }
+    }
+    private static class NetworkCallback extends ConnectivityManager.NetworkCallback{
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+            new FirstOperationsTask().execute(MainActivity.currentMainActivity);
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onConnected();
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+
+            if(currentMainActivity.outerNetworkCallback != null)
+                currentMainActivity.outerNetworkCallback.onDisconnected();
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+        }
+    }
+    public interface OuterNetworkCallback{
+        void onConnected();
+        void onDisconnected();
+    }
+
 
     protected GoogleMap gMap;
 
@@ -50,6 +113,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected Marker[] lookupMarkers;
 
     public static Intent locService;
+
+    protected static ConnectivityManager cm;
+    protected NetworkRequest networkRequest;
+    protected static ConnectivityManager.NetworkCallback networkCallback;
+
+    public OuterNetworkCallback outerNetworkCallback;
 
     protected static final String capTimePattern = "yyyy-MM-dd 'at' HH:mm:ss";
     public final static SimpleDateFormat formatter = new SimpleDateFormat(capTimePattern, Locale.US);
@@ -93,15 +162,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             latitudes = new LinkedList<>();
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
-
-
-            readLocationsFromDB();
-
-
-            startServices();
         }
 
+        if(!(this instanceof MainActivityCaller) && latitudes.size() == 0)
+            readLocationsFromDB();
+
         currentMainActivity = this;
+        startServices();
 
         if(!(this instanceof MainActivityCaller)) {
             if (savedInstanceState == null) {
@@ -118,9 +185,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
         }
+
+        networkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build();
+
+        boolean cmNull = cm == null;
+        cm = getSystemService(ConnectivityManager.class);
+
+        if(!(this instanceof MainActivityCaller)){
+            if(!cmNull)
+                cm.unregisterNetworkCallback(networkCallback);
+
+            networkCallback = new NetworkCallback();
+        }
+        cm.requestNetwork(networkRequest, networkCallback);
     }
 
-    private static void initializeDB(){
+    protected static void initializeDB(){
         if(LoginWayActivity.dbHelper == null) {
             LoginWayActivity.dbHelper = new FeedReaderDbHelper(MainActivity.currentMainActivity);
         }
@@ -200,6 +284,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         // Gets the data repository in write mode
+        if(dbHelper == null)
+            initializeDB();
+
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // Create a new map of values, where column names are the keys
@@ -211,6 +298,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
+
+        ExecutorService threadPool = Executors.newCachedThreadPool();
+        threadPool.submit(() -> APIConnector.SendLocationsList(LoginWayActivity.getLoggedTargetCode(), latitudes, longitudes, images, capTimes));
     }
 
     public static void saveAllLocations(){
@@ -248,7 +338,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .title("You are here").draggable(false));
 
 
-        if(lookupMarkers != null)
+        if(lookupMarkers != null && LoginWayActivity.loggedInTarget)
             setupLookupMarkers();
 
         if(prevNull)
@@ -301,12 +391,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Iterator<Double> latIter = latitudes.listIterator();
         Iterator<Double> longIter = longitudes.listIterator();
         Iterator<String> capIter = capTimes.listIterator();
-        for(int i = 0; i < lookupMarkers.length; i++){
-            LatLng lookUp = new LatLng(latIter.next(), longIter.next());
-            lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
-                    .icon(BitmapDescriptorFactory
-                            .defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                    .title("A previous location (" + capIter.next() + ")").draggable(false));
+        synchronized (latitudes) { // To clear out a bug with using these lists at the same time
+            synchronized (longitudes) {
+                synchronized (capTimes) {
+                    for (int i = 0; i < lookupMarkers.length; i++) {
+                        LatLng lookUp = new LatLng(latIter.next(), longIter.next());
+                        lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
+                                .icon(BitmapDescriptorFactory
+                                        .defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                                .title("A previous location (" + capIter.next() + ")").draggable(false));
+                    }
+                }
+            }
         }
     }
 
@@ -324,7 +420,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         moveMapCamera(zoom, currentMarker);
     }
 
-    private void moveMapCamera(boolean zoom, Marker marker){
+    protected void moveMapCamera(boolean zoom, Marker marker){
         if(marker != null) {
             if(zoom)
                 gMap.moveCamera(CameraUpdateFactory.zoomTo(13));
@@ -387,6 +483,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         super.onDestroy();
 
+        //cm.unregisterNetworkCallback(networkCallback);
         System.out.println("MainActivity destroyed");
     }
 
@@ -408,7 +505,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void logout(){
+    protected void logout(){
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
         db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
@@ -421,15 +518,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         stopService(locService);
 
+        cm = null;
+
         Intent intent = new Intent(this, LoginWayActivity.class);
         startActivity(intent);
         finish();
     }
 
-    private static void quitApplication(Context context){
+    private void quitApplication(Context context){
         context.stopService(locService);
         dbHelper.close();
         LoginWayActivity.dbHelper = dbHelper = null;
+
+        capTimes.clear();
+        images.clear();
+        latitudes.clear();
+        longitudes.clear();
+
+        cm.unregisterNetworkCallback(networkCallback);
+        cm = null;
 
         currentMainActivity.finish();
     }
@@ -458,47 +565,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return super.onOptionsItemSelected(item);
     }
 
-
-
-    public static void changeSearchedPhoneLocation(String currentLoc, String locsList){
-        String[] currentElements = currentLoc.split(";");
-        if(currentElements.length > 1) {
-            double currentLat = Double.parseDouble(currentElements[0]);
-            double currentLng = Double.parseDouble(currentElements[1]);
-
-            MainActivity.currentMainActivity.locationUpdated(new LatLng(currentLat, currentLng));
-        }
-
-        String[] locsListArr = locsList.split("\n");
-        if(locsListArr[0].length() == 0)
-            return;
-
-        for(String loc : locsListArr){
-            String[] elements = loc.split(";");
-            double lat = Double.parseDouble(elements[0]);
-            double lng = Double.parseDouble(elements[1]);
-            int image = Integer.parseInt(elements[2]);
-            String capTime = elements[3];
-
-            if(capTimes.contains(capTime))
-                continue;
-
-            latitudes.add(lat);
-            longitudes.add(lng);
-            images.add(image);
-            capTimes.add(capTime);
-        }
-
-        boolean applicationOff = dbHelper == null;
-        if(applicationOff)
-            initializeDB();
-
-        saveAllLocations();
-
-        if(applicationOff){
-            dbHelper.close();
-            LoginWayActivity.dbHelper = dbHelper = null;
-        }
+    public void showLocationsList(){
+        if(getLifecycle().getCurrentState().equals(Lifecycle.State.RESUMED))
+        getSupportFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
+                .replace(LoginWayActivity.loggedInCaller ? R.id.fragmentContainerView2 : R.id.fragmentContainerView, LocationsListFragment.class, null, "loclist")
+                .commit();
     }
 
 }

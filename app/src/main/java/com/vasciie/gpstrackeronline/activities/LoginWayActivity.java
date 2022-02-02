@@ -1,30 +1,85 @@
 package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.os.Build;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.transition.Slide;
 import android.view.Gravity;
+import android.view.View;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.lifecycle.Lifecycle;
 
 import com.vasciie.gpstrackeronline.R;
 import com.vasciie.gpstrackeronline.database.FeedReaderContract;
 import com.vasciie.gpstrackeronline.database.FeedReaderDbHelper;
+import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 public class LoginWayActivity extends AppCompatActivity {
+
+    private static class LoginCheckTask extends AsyncTask<LoginWayActivity, Void, Void>{
+
+        public LoginCheckTask(){super();} // To prevent a Deprecation warning
+
+        @Override
+        protected Void doInBackground(LoginWayActivity... objects) {
+            if(checkLoggedIn(true)){
+                objects[0].startMainActivity();
+            }else {
+                objects[0].runOnUiThread(() -> {
+                    objects[0].entryProgressBar.setVisibility(View.INVISIBLE);
+                    objects[0].loginCallerBtn.setEnabled(true);
+                    objects[0].loginTargetBtn.setEnabled(true);
+                });
+            }
+
+            return null;
+        }
+    }
+    private static class NetworkCallback extends ConnectivityManager.NetworkCallback{
+        @Override
+        public void onAvailable(@NonNull Network network) {
+            super.onAvailable(network);
+
+            if(currentLoginWayActivity != null && currentLoginWayActivity.checkLogin &&
+                    currentLoginWayActivity.cm.getActiveNetworkInfo() != null && currentLoginWayActivity.cm.getActiveNetworkInfo().isConnected())
+                new LoginCheckTask().execute(currentLoginWayActivity);
+        }
+
+        @Override
+        public void onLost(@NonNull Network network) {
+            super.onLost(network);
+        }
+
+        @Override
+        public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities networkCapabilities) {
+            super.onCapabilitiesChanged(network, networkCapabilities);
+        }
+    }
+
+
+    private ProgressBar entryProgressBar;
+    private Button loginCallerBtn, loginTargetBtn;
+
+    private ConnectivityManager cm;
+    private NetworkRequest networkRequest;
+    private ConnectivityManager.NetworkCallback networkCallback;
 
     public static FeedReaderDbHelper dbHelper;
     public static LoginWayActivity currentLoginWayActivity;
@@ -32,52 +87,72 @@ public class LoginWayActivity extends AppCompatActivity {
     public static boolean loggedInTarget, loggedInCaller;
 
     private static final int smsReadRequestCode = 93021;
+    private static final int contactsReadRequestCode = 93024;
+
+    private boolean checkLogin; // Used to verify permissions first and then try entering...
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        loggedInTarget = loggedInCaller = false;
-
+        checkLogin = false;
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS}, smsReadRequestCode);
         }
+        else if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
+        }
+        else {
+            if (TrackerService.alive) {
+                startMainActivity();
+                return;
+            }
+            checkLogin = true;
+        }
+
+        loggedInTarget = loggedInCaller = false;
 
         if(dbHelper == null)
             dbHelper = new FeedReaderDbHelper(this);
 
-        if(checkLoggedIn()){
-            startMainActivity();
-            return;
-        }
 
         currentLoginWayActivity = this;
 
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
-            getWindow().setExitTransition(new Slide(Gravity.START));
-        }
+        getWindow().requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
+        getWindow().setExitTransition(new Slide(Gravity.START));
 
-        setContentView(R.layout.activity_login);
+        setContentView(R.layout.activity_login); // Here because of the animation feature above
 
-        Button loginCaller = findViewById(R.id.caller_login_btn);
-        loginCaller.setOnClickListener(view -> {
-            startOtherActivity(LoginCallerActivity.class);
-        });
 
-        Button loginTarget = findViewById(R.id.target_login_btn);
-        loginTarget.setOnClickListener(view -> {
-            startOtherActivity(LoginTargetActivity.class);
-        });
+        entryProgressBar = findViewById(R.id.progressBar_entry);
+
+        loginCallerBtn = findViewById(R.id.caller_login_btn);
+        loginCallerBtn.setOnClickListener(view -> startOtherActivity(LoginCallerActivity.class));
+
+        loginTargetBtn = findViewById(R.id.target_login_btn);
+        loginTargetBtn.setOnClickListener(view -> startOtherActivity(LoginTargetActivity.class));
+
+        networkRequest = new NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .build();
+        networkCallback = new NetworkCallback();
+
+        cm = getSystemService(ConnectivityManager.class);
+        cm.requestNetwork(networkRequest, networkCallback);
+
+        if(checkLogin && cm.getActiveNetworkInfo() != null && cm.getActiveNetworkInfo().isConnected())
+            new LoginCheckTask().execute(this);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode){
+        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode || requestCode == contactsReadRequestCode){
             for(int grantResult : grantResults){
                 if(grantResult == PackageManager.PERMISSION_DENIED) {
                     dbHelper.close();
@@ -88,20 +163,35 @@ public class LoginWayActivity extends AppCompatActivity {
             if(requestCode == smsReadRequestCode) {
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, TrackerService.gpsAccessRequestCode);
-                    return;
                 }
+            }
+            else if(requestCode == TrackerService.gpsAccessRequestCode){
+                if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
+                    ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
+                }
+            }
+            else if(TrackerService.alive) {
+                startMainActivity();
+            }else{
+                new LoginCheckTask().execute(this);
             }
         }
     }
 
-    private void startMainActivity(){
+    private boolean canStartMainActivity = true;
+    private synchronized void startMainActivity(){
+        if(!canStartMainActivity)
+            return;
+
         Intent intent = new Intent(this, loggedInCaller ? MainActivityCaller.class : MainActivity.class);
         startActivity(intent);
 
         finish();
+
+        canStartMainActivity = false;
     }
 
-    public static boolean checkLoggedIn(){
+    public static boolean checkLoggedIn(boolean startup){
         if(loggedInCaller || loggedInTarget)
             return true;
 
@@ -125,7 +215,13 @@ public class LoginWayActivity extends AppCompatActivity {
 
         // If there's something written in there, it means a target is already logged in
         if(cursor.moveToNext()){
+            int code = cursor.getInt(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedTarget.COLUMN_NAME_CODE));
             cursor.close();
+
+            if(startup){
+                if(!APIConnector.TargetLogin(code))
+                    return false;
+            }
 
             loggedInTarget = true;
             return true;
@@ -135,7 +231,8 @@ public class LoginWayActivity extends AppCompatActivity {
 
 
         String[] projection2 = {
-                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME
+                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME,
+                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD
         };
 
         cursor = db.query(
@@ -150,7 +247,13 @@ public class LoginWayActivity extends AppCompatActivity {
 
         // If there's something written in there, it means a user is already logged in
         if(cursor.moveToNext()){
+            String username = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME));
+            String password = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD));
             cursor.close();
+            if(startup){
+                if(!APIConnector.CallerLogin(username, password))
+                    return false;
+            }
 
             loggedInCaller = true;
             return true;
@@ -192,11 +295,7 @@ public class LoginWayActivity extends AppCompatActivity {
 
     private void startOtherActivity(Class<?> cls){
         Intent intent = new Intent(this, cls);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
-        }else{
-            startActivity(intent);
-        }
+        startActivity(intent, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
     }
 
     /*public static boolean LoggedIn(){
@@ -208,6 +307,9 @@ public class LoginWayActivity extends AppCompatActivity {
         super.onDestroy();
 
         currentLoginWayActivity = null;
+
+        if(cm != null)
+            cm.unregisterNetworkCallback(networkCallback);
     }
 
     @Override

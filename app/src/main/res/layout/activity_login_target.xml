@@ -50,4 +50,14 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textInput_Code" />
 
+    <ProgressBar
+        android:id="@+id/progressBar_target"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:visibility="invisible"
+        app:layout_constraintEnd_toStartOf="@+id/login_target_btn"
+        app:layout_constraintTop_toTopOf="@+id/login_target_btn" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
