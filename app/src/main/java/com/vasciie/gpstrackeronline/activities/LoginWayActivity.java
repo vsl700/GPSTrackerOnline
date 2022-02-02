@@ -57,7 +57,8 @@ public class LoginWayActivity extends AppCompatActivity {
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
 
-            if(currentLoginWayActivity != null)
+            if(currentLoginWayActivity != null && currentLoginWayActivity.checkLogin &&
+                    currentLoginWayActivity.cm.getActiveNetworkInfo() != null && currentLoginWayActivity.cm.getActiveNetworkInfo().isConnected())
                 new LoginCheckTask().execute(currentLoginWayActivity);
         }
 
@@ -88,10 +89,12 @@ public class LoginWayActivity extends AppCompatActivity {
     private static final int smsReadRequestCode = 93021;
     private static final int contactsReadRequestCode = 93024;
 
+    private boolean checkLogin; // Used to verify permissions first and then try entering...
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        boolean checkLogin = false; // Used to verify permissions first and then try entering...
+        checkLogin = false;
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){

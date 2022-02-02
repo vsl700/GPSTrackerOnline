@@ -77,6 +77,10 @@ public final class APIConnector {
         return false;
     }
 
+    public static void CallerLogout(){
+        cookieManager.getCookieStore().removeAll();
+    }
+
     public static boolean TargetLogin(int code) {
         try {
             URL url = new URL(primaryLink + "/api/target/login?targetCode=" + code);

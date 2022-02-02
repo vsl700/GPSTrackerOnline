@@ -46,6 +46,8 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Locale;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private static class FirstOperationsTask extends AsyncTask<MainActivity, Void, Void>{
@@ -56,9 +58,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         protected Void doInBackground(MainActivity... mainActivities) {
             int oldCode = LoginWayActivity.getLoggedTargetCode();
             int newCode = APIConnector.GetTargetNewCode(oldCode);
-            if(oldCode != newCode){
+            if(oldCode != newCode && newCode != -1){
                 saveCodeToDB(newCode);
             }
+
+            APIConnector.SendLocationsList(newCode, latitudes, longitudes, images, capTimes);
 
             return null;
         }
@@ -158,10 +162,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             latitudes = new LinkedList<>();
             longitudes = new LinkedList<>();
             images = new LinkedList<>();
-
-
-            readLocationsFromDB();
         }
+
+        if(!(this instanceof MainActivityCaller) && latitudes.size() == 0)
+            readLocationsFromDB();
 
         currentMainActivity = this;
         startServices();
@@ -187,10 +191,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
                 .build();
+
+        boolean cmNull = cm == null;
         cm = getSystemService(ConnectivityManager.class);
 
         if(!(this instanceof MainActivityCaller)){
-            if(cm != null)
+            if(!cmNull)
                 cm.unregisterNetworkCallback(networkCallback);
 
             networkCallback = new NetworkCallback();
@@ -292,6 +298,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Insert the new row (the method below returns the primary key value of the new row)
         db.insert(FeedReaderContract.FeedLocations.TABLE_NAME, null, values);
+
+        ExecutorService threadPool = Executors.newCachedThreadPool();
+        threadPool.submit(() -> APIConnector.SendLocationsList(LoginWayActivity.getLoggedTargetCode(), latitudes, longitudes, images, capTimes));
     }
 
     public static void saveAllLocations(){
@@ -382,9 +391,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Iterator<Double> latIter = latitudes.listIterator();
         Iterator<Double> longIter = longitudes.listIterator();
         Iterator<String> capIter = capTimes.listIterator();
-        synchronized (latIter) { // To clear out a bug with using these lists at the same time
-            synchronized (longIter) {
-                synchronized (capIter) {
+        synchronized (latitudes) { // To clear out a bug with using these lists at the same time
+            synchronized (longitudes) {
+                synchronized (capTimes) {
                     for (int i = 0; i < lookupMarkers.length; i++) {
                         LatLng lookUp = new LatLng(latIter.next(), longIter.next());
                         lookupMarkers[i] = gMap.addMarker(new MarkerOptions().position(lookUp)
@@ -496,7 +505,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void logout(){
+    protected void logout(){
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
         db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
@@ -508,6 +517,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         longitudes.clear();
 
         stopService(locService);
+
+        cm = null;
 
         Intent intent = new Intent(this, LoginWayActivity.class);
         startActivity(intent);
@@ -523,6 +534,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         images.clear();
         latitudes.clear();
         longitudes.clear();
+
+        cm.unregisterNetworkCallback(networkCallback);
+        cm = null;
 
         currentMainActivity.finish();
     }

@@ -246,6 +246,13 @@ public class MainActivityCaller extends MainActivity {
     }
 
     @Override
+    protected void logout() {
+        super.logout();
+
+        APIConnector.CallerLogout();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
 
