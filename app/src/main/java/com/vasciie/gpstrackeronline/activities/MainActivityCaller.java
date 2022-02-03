@@ -35,8 +35,12 @@ import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 import com.vasciie.gpstrackeronline.services.APIConnector;
+import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import org.json.JSONObject;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivityCaller extends MainActivity {
     private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
@@ -109,11 +113,18 @@ public class MainActivityCaller extends MainActivity {
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
 
-            ((MainActivityCaller) currentMainActivity).syncWithInternet();
+            currentMainActivity.syncWithInternet();
             ((MainActivityCaller) currentMainActivity).dismissNoInternet();
 
-            if(currentMainActivity.outerNetworkCallback != null)
-                currentMainActivity.outerNetworkCallback.onConnected();
+            while(currentMainActivity.outerNetworkCallback == null){
+                System.out.println("Waiting for the service...");
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            currentMainActivity.outerNetworkCallback.onConnected();
         }
 
         @Override
@@ -204,6 +215,7 @@ public class MainActivityCaller extends MainActivity {
         }
     }
 
+    @Override
     public void syncWithInternet(){
         firstTask = new FirstOperationsTask().execute(this);
     }
@@ -314,7 +326,7 @@ public class MainActivityCaller extends MainActivity {
 
         // Send the SMS
         SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage(phoneNumber, null, message, null, null);
+        smsManager.sendMultipartTextMessage(phoneNumber, null, smsManager.divideMessage(message), null, null);
     }
 
     private void onAttachFragment(FragmentManager fragmentManager, Fragment fragment) {
@@ -331,6 +343,11 @@ public class MainActivityCaller extends MainActivity {
     }
 
     public void targetLocationUpdated(int index, LatLng current){
+        if(index == -1){
+            syncWithInternet();
+            return;
+        }
+
         if(targetMarkers[index] != null)
             targetMarkers[index].remove();
 

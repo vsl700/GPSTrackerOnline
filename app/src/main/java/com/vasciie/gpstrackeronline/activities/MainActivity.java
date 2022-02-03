@@ -62,12 +62,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 saveCodeToDB(newCode);
             }
 
+            while(!TrackerService.alive){
+                System.out.println("Waiting for the service...");
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            TrackerService.createHubConnection();
+            TrackerService.startHubConnection();
+
+            if(TrackerService.prevLoc != null)
+                APIConnector.SendCurrentLocation(TrackerService.prevLoc.getLatitude(), TrackerService.prevLoc.getLongitude());
             APIConnector.SendLocationsList(newCode, latitudes, longitudes, images, capTimes);
 
             return null;
         }
 
         private void saveCodeToDB(int code){
+            while(dbHelper == null){
+                System.out.println("Waiting for db...");
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
             SQLiteDatabase db = dbHelper.getWritableDatabase();
             db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
 
@@ -82,7 +104,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
 
-            new FirstOperationsTask().execute(MainActivity.currentMainActivity);
+            currentMainActivity.syncWithInternet();
 
             if(currentMainActivity.outerNetworkCallback != null)
                 currentMainActivity.outerNetworkCallback.onConnected();
@@ -152,9 +174,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         initializeDB();
 
-        if(!TrackerService.alive)
-            locService = new Intent(this, TrackerService.class);
-
         if(currentMainActivity == null) { // If that's the first time we start the activity
             createImageIds();
 
@@ -168,6 +187,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             readLocationsFromDB();
 
         currentMainActivity = this;
+        if(!TrackerService.alive)
+            locService = new Intent(this, TrackerService.class);
         startServices();
 
         if(!(this instanceof MainActivityCaller)) {
@@ -186,6 +207,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             getSupportFragmentManager().addFragmentOnAttachListener(this::onAttachFragment);
         }
 
+        requestConnectionCallback();
+    }
+
+    public void requestConnectionCallback(){
         networkRequest = new NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -202,6 +227,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             networkCallback = new NetworkCallback();
         }
         cm.requestNetwork(networkRequest, networkCallback);
+    }
+
+    public void syncWithInternet(){
+        new FirstOperationsTask().execute(this);
     }
 
     protected static void initializeDB(){

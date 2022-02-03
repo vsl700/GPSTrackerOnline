@@ -58,7 +58,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class TrackerService extends Service implements MainActivity.OuterNetworkCallback {
-    private class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
+    private static class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
 
         public HubConnectionTask(){super();} // To prevent a Deprecation warning
 
@@ -73,19 +73,20 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             try {
                 hubConnection.start().blockingAwait();
 
-                if(!alive) {
+                if(!alive/* && MainActivity.currentMainActivity.isDestroyed()*/) {
                     if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
                         hubConnection.stop();
 
                     hubConnection.close();
                 }
+
+                System.out.println(hubConnection.getConnectionId());
+                System.out.println(hubConnection.getConnectionState());
             } catch (Exception e) {
                 e.printStackTrace();
                 isOnline = false;
             }
 
-            System.out.println(hubConnection.getConnectionId());
-            System.out.println(hubConnection.getConnectionState());
             return null;
         }
     }
@@ -102,7 +103,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public LocationRequest locRequest;
     public LocationListener locationListener;
 
-    private HubConnection hubConnection;
+    private static HubConnection hubConnection;
     private static final String primaryLink = APIConnector.primaryLink;
 
     // The access to the activity functions and public application fields
@@ -229,6 +230,10 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         alive = true;
 
         main = MainActivity.currentMainActivity;
+        if(main.isDestroyed() && LoginWayActivity.loggedInTarget){
+            main.outerNetworkCallback = this;
+            main.requestConnectionCallback(); // In the case where only the service starts, without the activity (when the Target receives an SMS)
+        }
 
         thread = new HandlerThread("ServiceStartArguments",
                 Process.THREAD_PRIORITY_BACKGROUND);
@@ -267,6 +272,13 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                 makeUseOfNewLoc();
             }
         };
+    }
+
+    public static void createHubConnection(){
+        if(hubConnection != null){
+            stopHubConnection();
+            hubConnection.close();
+        }
 
         String value;
         if(LoginWayActivity.loggedInTarget)
@@ -275,21 +287,21 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=" + value).build();
 
         if(LoginWayActivity.loggedInCaller)
-        hubConnection.on("sendToUser", (targetCode, message) -> main.runOnUiThread(() -> {
-            System.out.println("Target: " + targetCode);
-            System.out.println("Message: " + message);
+            hubConnection.on("sendToUser", (targetCode, message) -> main.runOnUiThread(() -> {
+                System.out.println("Target: " + targetCode);
+                System.out.println("Message: " + message);
 
-            try {
-                JSONArray jsonArray = new JSONArray(message.replace("\"", ""));
-                double lat = jsonArray.getDouble(0);
-                double lng = jsonArray.getDouble(1);
+                try {
+                    JSONArray jsonArray = new JSONArray(message.replace("\"", ""));
+                    double lat = jsonArray.getDouble(0);
+                    double lng = jsonArray.getDouble(1);
 
-                MainActivityCaller mainCaller = (MainActivityCaller) main;
-                mainCaller.targetLocationUpdated(mainCaller.getIndexByOldCode(targetCode), new LatLng(lat, lng));
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }), Integer.class,String.class);
+                    MainActivityCaller mainCaller = (MainActivityCaller) main;
+                    mainCaller.targetLocationUpdated(mainCaller.getIndexByOldCode(targetCode), new LatLng(lat, lng));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }), Integer.class,String.class);
     }
 
     private boolean isGPSEnabled(){
@@ -311,7 +323,21 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
     @Override
     public void onConnected() {
-        startHubConnection();
+        while(!alive){
+            System.out.println("Waiting for the service...");
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        if(LoginWayActivity.loggedInCaller) {
+            if(hubConnection == null)
+                createHubConnection();
+
+            startHubConnection();
+        }
     }
 
     @Override
@@ -338,8 +364,6 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
         main.outerNetworkCallback = this;
-
-        startHubConnection();
 
         if (!updatesOn) {
             Message msg = serviceHandler.obtainMessage();
@@ -402,6 +426,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
             if(!hubConnection.getConnectionState().equals(HubConnectionState.CONNECTING))
                 hubConnection.close();
+
+            hubConnection = null;
         }
 
         isCallerTracking = false;
@@ -463,12 +489,14 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         updatesOn = internetUpdatesOn = true;
     }
 
-    private void startHubConnection() {
-        if(!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
-            new HubConnectionTask().execute(hubConnection);
-            hubConnection.onClosed(Throwable::printStackTrace);
-            isOnline = true;
-        }
+    public static void startHubConnection() {
+        try {
+            if (!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
+                new HubConnectionTask().execute(hubConnection);
+                hubConnection.onClosed(Throwable::printStackTrace);
+                isOnline = true;
+            }
+        }catch (Exception e) {e.printStackTrace();}
     }
 
     private void stopLocationUpdates() {
@@ -487,8 +515,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         updatesOn = internetUpdatesOn = false;
     }
 
-    private void stopHubConnection() {
-        if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
+    private static void stopHubConnection() {
+        //if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
             hubConnection.stop();
         isOnline = false;
     }
