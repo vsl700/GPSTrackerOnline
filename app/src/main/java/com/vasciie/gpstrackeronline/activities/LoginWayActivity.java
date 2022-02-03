@@ -32,7 +32,6 @@ import com.vasciie.gpstrackeronline.services.APIConnector;
 import com.vasciie.gpstrackeronline.services.TrackerService;
 
 public class LoginWayActivity extends AppCompatActivity {
-
     private static class LoginCheckTask extends AsyncTask<LoginWayActivity, Void, Void>{
 
         public LoginCheckTask(){super();} // To prevent a Deprecation warning
@@ -291,6 +290,37 @@ public class LoginWayActivity extends AppCompatActivity {
         cursor.close();
 
         return -1;
+    }
+
+    public static String getLoggedUserName() {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        String[] projection = {
+                FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME
+        };
+
+        Cursor cursor = db.query(
+                FeedReaderContract.FeedLoggedUser.TABLE_NAME,   // The table to query
+                projection,             // The array of columns to return (pass null to get all)
+                null,              // The columns for the WHERE clause
+                null,          // The values for the WHERE clause
+                null,                   // don't group the rows
+                null,                   // don't filter by row groups
+                null               // don't sort
+        );
+
+        // If there's something written in there, it means a caller is already logged in
+        if(cursor.moveToNext()){
+            String username = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME));
+            cursor.close();
+
+            loggedInCaller = true;
+            return username;
+        }
+
+        cursor.close();
+
+        return null;
     }
 
     private void startOtherActivity(Class<?> cls){

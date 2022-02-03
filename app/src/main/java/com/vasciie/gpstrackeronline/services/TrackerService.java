@@ -39,6 +39,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResponse;
 import com.google.android.gms.location.SettingsClient;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.tasks.Task;
 import com.microsoft.signalr.HubConnection;
 import com.microsoft.signalr.HubConnectionBuilder;
@@ -49,7 +50,12 @@ import com.vasciie.gpstrackeronline.activities.MainActivity;
 import com.vasciie.gpstrackeronline.activities.MainActivityCaller;
 import com.vasciie.gpstrackeronline.receivers.NotificationReceiver;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class TrackerService extends Service implements MainActivity.OuterNetworkCallback {
     private class HubConnectionTask extends AsyncTask<HubConnection, Void, Void> {
@@ -262,11 +268,28 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             }
         };
 
-        hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=vsl700").build();
-        hubConnection.on("sendToUser", (user, message) -> main.runOnUiThread(() -> {
-            System.out.println("User: " + user);
+        String value;
+        if(LoginWayActivity.loggedInTarget)
+            value = LoginWayActivity.getLoggedTargetCode() + "";
+        else value = LoginWayActivity.getLoggedUserName();
+        hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=" + value).build();
+
+        if(LoginWayActivity.loggedInCaller)
+        hubConnection.on("sendToUser", (targetCode, message) -> main.runOnUiThread(() -> {
+            System.out.println("Target: " + targetCode);
             System.out.println("Message: " + message);
-        }), String.class,String.class);
+
+            try {
+                JSONArray jsonArray = new JSONArray(message.replace("\"", ""));
+                double lat = jsonArray.getDouble(0);
+                double lng = jsonArray.getDouble(1);
+
+                MainActivityCaller mainCaller = (MainActivityCaller) main;
+                mainCaller.targetLocationUpdated(mainCaller.getIndexByOldCode(targetCode), new LatLng(lat, lng));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }), Integer.class,String.class);
     }
 
     private boolean isGPSEnabled(){
@@ -303,6 +326,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         if(LoginWayActivity.loggedInTarget) {
             main.saveNewLocationToDB(prevLoc);
             serviceHandler.locationReceived();
+
+            ExecutorService threadPool = Executors.newCachedThreadPool();
+            threadPool.submit(() -> APIConnector.SendCurrentLocation(prevLoc.getLatitude(), prevLoc.getLongitude()));
         }
     }
 

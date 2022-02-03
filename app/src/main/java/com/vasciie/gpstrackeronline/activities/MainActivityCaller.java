@@ -35,13 +35,8 @@ import com.vasciie.gpstrackeronline.fragments.NoInternetDialog;
 import com.vasciie.gpstrackeronline.fragments.RecyclerViewAdapterPhones;
 import com.vasciie.gpstrackeronline.fragments.SMSDialog;
 import com.vasciie.gpstrackeronline.services.APIConnector;
-import com.vasciie.gpstrackeronline.services.TrackerService;
 
 import org.json.JSONObject;
-
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class MainActivityCaller extends MainActivity {
     private static class FirstOperationsTask extends AsyncTask<MainActivityCaller, Void, Void> {
@@ -335,7 +330,7 @@ public class MainActivityCaller extends MainActivity {
         }
     }
 
-    private void targetLocationUpdated(int index, LatLng current){
+    public void targetLocationUpdated(int index, LatLng current){
         if(targetMarkers[index] != null)
             targetMarkers[index].remove();
 
@@ -343,6 +338,26 @@ public class MainActivityCaller extends MainActivity {
                 .icon(BitmapDescriptorFactory
                         .defaultMarker(BitmapDescriptorFactory.HUE_VIOLET))
                 .title(names[index] + " is here").draggable(false));
+    }
+
+    public int getIndexByOldCode(int targetCode){
+        for(int i = 0; i < tempCodes.length; i++){
+            if(targetCode == tempCodes[i]){
+                return i;
+            }
+        }
+
+        for(int i = 0; i < codes.length; i++){
+            if(targetCode == codes[i]){
+                // If the phone sends data through a code, contained in the array with the current
+                // codes, it means it has already switched from the old one to the new one.
+                // Thus, we overwrite the code in the old codes array with the new code
+                tempCodes[i] = targetCode;
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     public static void changeSearchedPhoneLocation(int targetCode, String currentLoc, String locsList){
@@ -371,13 +386,7 @@ public class MainActivityCaller extends MainActivity {
             e.printStackTrace();
         }
 
-        int index = -1;
-        for(int i = 0; i < tempCodes.length; i++){
-            if(targetCode == tempCodes[i]){
-                index = i;
-                break;
-            }
-        }
+        int index = main.getIndexByOldCode(targetCode);
 
         if(index == -1)
             return;

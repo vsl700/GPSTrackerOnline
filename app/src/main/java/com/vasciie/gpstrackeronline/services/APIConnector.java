@@ -2,6 +2,8 @@ package com.vasciie.gpstrackeronline.services;
 
 import android.text.TextUtils;
 
+import com.vasciie.gpstrackeronline.activities.LoginWayActivity;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -429,5 +431,53 @@ public final class APIConnector {
         }
 
         return -1;
+    }
+
+    public static void SendCurrentLocation(double lat, double lng){
+        try {
+            URL url = new URL(primaryLink + "/api/target?targetCode=" + LoginWayActivity.getLoggedTargetCode()); // Assuming only the Target uses this method
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setConnectTimeout(5000);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json; utf-8");
+            connection.setRequestProperty("Accept", "application/json");
+
+            JSONArray jsonArray = new JSONArray();
+            jsonArray.put(lat).put(lng);
+            String jsonInput = "\"" + jsonArray.toString() + "\""; // The system requires the input as a String value
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = jsonInput.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // Without asking for a response from the API method the method just doesn't work...
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+                String responseStr = response.toString();
+                System.out.println(responseStr);
+            }catch(Exception e){
+                e.printStackTrace();
+
+                StringBuilder sb = new StringBuilder();
+                InputStreamReader in = new InputStreamReader(connection.getErrorStream());
+                BufferedReader bufferedReader = new BufferedReader(in);
+                int cp;
+                while ((cp = bufferedReader.read()) != -1) {
+                    sb.append((char) cp);
+                }
+                bufferedReader.close();
+                in.close();
+
+                System.out.println("sb="+sb.toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
