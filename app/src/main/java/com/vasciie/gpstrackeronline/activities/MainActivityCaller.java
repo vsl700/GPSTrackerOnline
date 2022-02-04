@@ -270,6 +270,8 @@ public class MainActivityCaller extends MainActivity {
             rvAdapter.onDestroy();
 
         dismissNoInternet();
+
+        TrackerService.stopHubConnection();
     }
 
     @Override

@@ -302,6 +302,15 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                     e.printStackTrace();
                 }
             }), Integer.class,String.class);
+        else
+            hubConnection.on("sendToTarget", (message) -> {
+                System.out.println(message);
+
+                if(message.equals("trackin"))
+                    isCallerTracking = true;
+                else if(message.equals("no-trackin"))
+                    isCallerTracking = false;
+            }, String.class);
     }
 
     private boolean isGPSEnabled(){
@@ -515,7 +524,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         updatesOn = internetUpdatesOn = false;
     }
 
-    private static void stopHubConnection() {
+    public static void stopHubConnection() {
         //if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
             hubConnection.stop();
         isOnline = false;
