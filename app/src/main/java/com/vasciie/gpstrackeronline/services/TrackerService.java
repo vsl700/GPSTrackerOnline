@@ -7,8 +7,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -16,6 +18,7 @@ import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -90,6 +93,25 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             return null;
         }
     }
+    private class BatteryLevelReceiver extends BroadcastReceiver {
+        private static final float minBatteryPct = 10;
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL ||
+                    status == BatteryManager.BATTERY_STATUS_NOT_CHARGING;
+
+            int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+
+            float batteryPct = level * 100 / (float)scale;
+            if(batteryPct < minBatteryPct && !isCharging)
+                batteryLow = true;
+            else batteryLow = false;
+        }
+    }
 
 
     private Looper serviceLooper;
@@ -110,6 +132,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public static MainActivity main;
 
     public static boolean isCallerTracking;
+    private static boolean batteryLow;
 
     @Nullable
     @Override
@@ -139,11 +162,15 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             // app service is working
             while (true) {
                 System.out.println("Cycling...");
+                if(batteryLow)
+                    System.out.println("Low battery");
                 if (!isLocationActivelyUsed()) {
-                    locService.stopLocationUpdates();
-                    locService.stopLocationUpdatesInternetOnly();
+                    if(updatesOn) {
+                        locService.stopLocationUpdates();
+                        locService.stopLocationUpdatesInternetOnly();
+                    }
 
-                    if(LoginWayActivity.loggedInCaller) {
+                    if(LoginWayActivity.loggedInCaller || batteryLow) {
                         try {
                             Thread.sleep(normalMillis);
                             continue;
@@ -154,11 +181,11 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                     }
 
                     try {
-                        int min = 300, max = 420; // next track after 5:00 to 7:00 minutes
+                        int min = 300, max = 600; // next track after 5:00 to 10:00 minutes
                         int time = r.nextInt((max - min) + 1) + min;
                         int secs = 0;
                         while (secs < time) {
-                            if (isLocationActivelyUsed())
+                            if (isLocationActivelyUsed() || batteryLow)
                                 break;
 
                             if(updatesOn){
@@ -171,7 +198,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                             secs++;
                         }
 
-                        if (isLocationActivelyUsed())
+                        if (isLocationActivelyUsed() || batteryLow)
                             continue;
 
                         locReceived = false;
@@ -378,6 +405,11 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
+
+            if(LoginWayActivity.loggedInTarget) {
+                IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+                registerReceiver(new BatteryLevelReceiver(), filter);
+            }
 
             Intent notificationIntent = new Intent(this, LoginWayActivity.loggedInCaller ? MainActivityCaller.class : MainActivity.class);
             PendingIntent pendingIntent =
