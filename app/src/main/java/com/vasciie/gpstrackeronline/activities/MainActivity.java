@@ -190,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(!TrackerService.alive) {
             locService = new Intent(this, TrackerService.class);
             startServices();
-        }
+        }else TrackerService.main = this;
 
         if(!(this instanceof MainActivityCaller)) {
             if (savedInstanceState == null) {
