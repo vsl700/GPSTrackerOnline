@@ -187,9 +187,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             readLocationsFromDB();
 
         currentMainActivity = this;
-        if(!TrackerService.alive)
+        if(!TrackerService.alive) {
             locService = new Intent(this, TrackerService.class);
-        startServices();
+            startServices();
+        }
 
         if(!(this instanceof MainActivityCaller)) {
             if (savedInstanceState == null) {
@@ -222,11 +223,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if(!(this instanceof MainActivityCaller)){
             if(!cmNull)
-                cm.unregisterNetworkCallback(networkCallback);
+                unregisterConnectionCallback();
 
             networkCallback = new NetworkCallback();
         }
         cm.requestNetwork(networkRequest, networkCallback);
+    }
+
+    public void unregisterConnectionCallback(){
+        cm.unregisterNetworkCallback(networkCallback);
     }
 
     public void syncWithInternet(){
@@ -496,8 +501,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onResume() {
         super.onResume();
-
-        startServices();
     }
 
     @Override
@@ -512,7 +515,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onDestroy() {
         super.onDestroy();
 
-        //cm.unregisterNetworkCallback(networkCallback);
+        //unregisterConnectionCallback();
         System.out.println("MainActivity destroyed");
     }
 
@@ -555,6 +558,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void quitApplication(Context context){
+        unregisterConnectionCallback();
+        cm = null;
+
         context.stopService(locService);
         dbHelper.close();
         LoginWayActivity.dbHelper = dbHelper = null;
@@ -563,9 +569,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         images.clear();
         latitudes.clear();
         longitudes.clear();
-
-        cm.unregisterNetworkCallback(networkCallback);
-        cm = null;
 
         currentMainActivity.finish();
     }

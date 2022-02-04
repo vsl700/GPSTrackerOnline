@@ -378,7 +378,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
     @Override
     public void onDisconnected() {
-        stopHubConnection();
+        //stopHubConnection();
     }
 
     private void makeUseOfNewLoc() {
@@ -394,10 +394,14 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         }
     }
 
+    private static BroadcastReceiver batteryReceiver;
     private static boolean isOnline = false;
     @SuppressLint("RemoteViewLayout")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if(!alive)
+            return START_STICKY;
+
         main = MainActivity.currentMainActivity;
         main.outerNetworkCallback = this;
 
@@ -408,7 +412,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
             if(LoginWayActivity.loggedInTarget) {
                 IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-                registerReceiver(new BatteryLevelReceiver(), filter);
+                registerReceiver(batteryReceiver = new BatteryLevelReceiver(), filter);
             }
 
             Intent notificationIntent = new Intent(this, LoginWayActivity.loggedInCaller ? MainActivityCaller.class : MainActivity.class);
@@ -470,6 +474,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
             hubConnection = null;
         }
+
+        unregisterReceiver(batteryReceiver);
 
         isCallerTracking = false;
 

@@ -163,6 +163,12 @@ public class SMSReceiver extends BroadcastReceiver {
                             smsManager.sendMultipartTextMessage(finalFrom, null, smsManager.divideMessage(message), null, null);
 
                             TrackerService.isCallerTracking = false;
+                            // If we want SMS return only, we might not want to return online
+                            // (on low battery for example)
+                            if(MainActivity.currentMainActivity.isDestroyed()) {
+                                MainActivity.currentMainActivity.unregisterConnectionCallback();
+                                context.stopService(locService);
+                            }
 
                             return true;
                         });
