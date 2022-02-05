@@ -104,6 +104,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onAvailable(@NonNull Network network) {
             super.onAvailable(network);
 
+            if(!this.equals(networkCallback))
+                return;
+
+            System.out.println("on-internet-available");
             currentMainActivity.syncWithInternet();
 
             if(currentMainActivity.outerNetworkCallback != null)
@@ -189,8 +193,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         currentMainActivity = this;
         if(!TrackerService.alive) {
             locService = new Intent(this, TrackerService.class);
-            startServices();
-        }else TrackerService.main = this;
+        }
+        startServices();
 
         if(!(this instanceof MainActivityCaller)) {
             if (savedInstanceState == null) {
@@ -228,10 +232,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             networkCallback = new NetworkCallback();
         }
         cm.requestNetwork(networkRequest, networkCallback);
+        System.out.println("Registered connection callback");
     }
 
     public void unregisterConnectionCallback(){
         cm.unregisterNetworkCallback(networkCallback);
+        System.out.println("Unregistered connection callback");
     }
 
     public void syncWithInternet(){
@@ -463,31 +469,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if(requestCode == TrackerService.gpsAccessRequestCode) {
-            // I used a 'for' just in case I add more permissions
-            for (int grantResult : grantResults) {
-                if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                    startService(locService);
-                    return;
-                }
-            }
-
-            quitApplication(this);
-        }
-        /*else if(requestCode == smsSendRequestCode){
-            if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                takeActionOnSmsSendRequest();
-            }
-            else{
-                Toast.makeText(this, "SMS Send permission is required to send a message to the tracked phone!", Toast.LENGTH_LONG).show();
-            }
-        }*/
-    }
-
     private boolean startServicesInvoked = false;
     private void startServices(){
         if(!startServicesInvoked)
@@ -557,11 +538,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         finish();
     }
 
-    private void quitApplication(Context context){
+    private void quitApplication(){
         unregisterConnectionCallback();
         cm = null;
+        networkCallback = null;
 
-        context.stopService(locService);
+        stopService(locService);
         dbHelper.close();
         LoginWayActivity.dbHelper = dbHelper = null;
 
@@ -570,7 +552,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         latitudes.clear();
         longitudes.clear();
 
-        currentMainActivity.finish();
+        finish();
     }
 
     // create an action bar button
@@ -588,7 +570,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         int id = item.getItemId();
 
         if (id == R.id.menu_quit_btn) {
-            quitApplication(this);
+            quitApplication();
         }
         else if(id == R.id.menu_logout_btn){
             logout();

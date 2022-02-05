@@ -394,18 +394,15 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         }
     }
 
-    private static BroadcastReceiver batteryReceiver;
+    private BroadcastReceiver batteryReceiver;
     private static boolean isOnline = false;
     @SuppressLint("RemoteViewLayout")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if(!alive)
-            return START_STICKY;
-
         main = MainActivity.currentMainActivity;
         main.outerNetworkCallback = this;
 
-        if (!updatesOn) {
+        if (batteryReceiver == null) {
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
@@ -475,7 +472,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             hubConnection = null;
         }
 
-        unregisterReceiver(batteryReceiver);
+        if(LoginWayActivity.loggedInTarget)
+            unregisterReceiver(batteryReceiver);
 
         isCallerTracking = false;
 

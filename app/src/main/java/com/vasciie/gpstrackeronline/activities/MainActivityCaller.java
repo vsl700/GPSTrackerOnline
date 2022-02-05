@@ -271,7 +271,8 @@ public class MainActivityCaller extends MainActivity {
 
         dismissNoInternet();
 
-        TrackerService.stopHubConnection();
+        if(TrackerService.alive)
+            TrackerService.stopHubConnection();
     }
 
     @Override
