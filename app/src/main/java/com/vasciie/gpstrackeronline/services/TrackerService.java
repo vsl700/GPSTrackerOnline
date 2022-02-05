@@ -301,10 +301,16 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         };
     }
 
+    // That method should NOT have any commands for bypassing operations, otherwise some of the app
+    // functionalities will stop!
     public static void createHubConnection(){
         if(hubConnection != null){
-            stopHubConnection();
-            hubConnection.close();
+            HubConnection tempHub = hubConnection;
+            ExecutorService threadPool = Executors.newCachedThreadPool();
+            threadPool.submit(() -> {
+                stopHubConnection();
+                tempHub.close();
+            });
         }
 
         String value;
