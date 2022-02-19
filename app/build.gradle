@@ -3,16 +3,33 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        debug {
+            storeFile file('C:\\Users\\Asus\\AndroidStudioProjects\\GPSTrackerOnline4\\signature.jks')
+            storePassword 'stbg3541'
+            keyAlias 'key0'
+            keyPassword 'stbg3541'
+        }
+        release {
+            storeFile file('C:\\Users\\Asus\\AndroidStudioProjects\\GPSTrackerOnline4\\signature.jks')
+            storePassword 'stbg3541'
+            keyPassword 'stbg3541'
+            keyAlias 'key0'
+        }
+    }
     compileSdk 31
 
     defaultConfig {
         applicationId "com.vasciie.gpstrackeronline"
-        minSdk 23
+        minSdk 24
         targetSdk 31
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        signingConfig signingConfigs.release
+        minSdkVersion 24
+        targetSdkVersion 31
     }
 
     buildTypes {
