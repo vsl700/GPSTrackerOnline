@@ -512,6 +512,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
     public static boolean updatesOn = false;
     public static final int gpsAccessRequestCode = 14894;
+    public static final int gpsBGAccessRequestCode = 14332;
 
     private static boolean gpsUpdatesOn = false;
     private void startLocationUpdates() {

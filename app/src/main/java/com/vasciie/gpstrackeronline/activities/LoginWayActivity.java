@@ -11,6 +11,7 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.transition.Slide;
 import android.view.Gravity;
@@ -18,6 +19,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -151,7 +153,7 @@ public class LoginWayActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode || requestCode == contactsReadRequestCode){
+        if(requestCode == smsReadRequestCode || requestCode == TrackerService.gpsAccessRequestCode || requestCode == TrackerService.gpsBGAccessRequestCode || requestCode == contactsReadRequestCode){
             for(int grantResult : grantResults){
                 if(grantResult == PackageManager.PERMISSION_DENIED) {
                     dbHelper.close();
@@ -164,7 +166,13 @@ public class LoginWayActivity extends AppCompatActivity {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, TrackerService.gpsAccessRequestCode);
                 }
             }
-            else if(requestCode == TrackerService.gpsAccessRequestCode){
+            else if(requestCode == TrackerService.gpsAccessRequestCode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this,"Please ALLOW LOCATION ALL THE TIME!", Toast.LENGTH_LONG).show();
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, TrackerService.gpsBGAccessRequestCode);
+                }
+            }
+            else if(requestCode == TrackerService.gpsBGAccessRequestCode || requestCode == TrackerService.gpsAccessRequestCode){
                 if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
                     ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
                 }
