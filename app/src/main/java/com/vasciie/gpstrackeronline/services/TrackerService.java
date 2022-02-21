@@ -107,9 +107,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
 
             float batteryPct = level * 100 / (float)scale;
-            if(batteryPct < minBatteryPct && !isCharging)
-                batteryLow = true;
-            else batteryLow = false;
+            batteryLow = batteryPct < minBatteryPct && !isCharging;
         }
     }
 
@@ -203,6 +201,11 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                         }
                         else{
                             locService.startLocationUpdates();
+                        }
+
+                        if(hubConnection.getConnectionState().equals(HubConnectionState.DISCONNECTED)){
+                            isOnline = false;
+                            startHubConnection();
                         }
 
                         int checks = 0;
@@ -460,10 +463,11 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public static boolean alive = false;
     @Override
     public void onDestroy() {
-        stopLocationUpdates();
-        stopLocationUpdatesInternetOnly();
         thread.interrupt();
         thread.quit();
+
+        stopLocationUpdates();
+        stopLocationUpdatesInternetOnly();
 
         if(hubConnection != null) {
             stopHubConnection();
