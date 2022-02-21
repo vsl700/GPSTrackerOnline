@@ -252,6 +252,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public static Location prevLoc;
     @Override
     public void onCreate() {
+        if(locationListener != null)
+            return;
+
         alive = true;
 
         main = MainActivity.currentMainActivity;
