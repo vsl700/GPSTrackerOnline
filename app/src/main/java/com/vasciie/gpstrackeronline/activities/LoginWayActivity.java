@@ -104,6 +104,9 @@ public class LoginWayActivity extends AppCompatActivity {
         else if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
         }
+        else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_BACKGROUND_LOCATION}, TrackerService.gpsBGAccessRequestCode);
+        }
         else {
             if (TrackerService.alive) {
                 startMainActivity();
@@ -202,7 +205,7 @@ public class LoginWayActivity extends AppCompatActivity {
         if(loggedInCaller || loggedInTarget)
             return true;
 
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
 
         // Define a projection that specifies which columns from the database
         // you will actually use after this query.
@@ -226,8 +229,10 @@ public class LoginWayActivity extends AppCompatActivity {
             cursor.close();
 
             if(startup){
-                if(!APIConnector.TargetLogin(code))
+                if(!APIConnector.TargetLogin(code)) {
+                    db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
                     return false;
+                }
             }
 
             loggedInTarget = true;
@@ -258,8 +263,10 @@ public class LoginWayActivity extends AppCompatActivity {
             String password = cursor.getString(cursor.getColumnIndexOrThrow(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_PASSWORD));
             cursor.close();
             if(startup){
-                if(!APIConnector.CallerLogin(username, password))
+                if(!APIConnector.CallerLogin(username, password)) {
+                    db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
                     return false;
+                }
             }
 
             loggedInCaller = true;

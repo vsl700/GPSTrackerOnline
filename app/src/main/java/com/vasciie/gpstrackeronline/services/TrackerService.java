@@ -165,10 +165,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                 if(batteryLow)
                     System.out.println("Low battery");
                 if (!isLocationActivelyUsed()) {
-                    if(updatesOn) {
-                        locService.stopLocationUpdates();
-                        locService.stopLocationUpdatesInternetOnly();
-                    }
+                    locService.stopLocationUpdates();
+                    locService.stopLocationUpdatesInternetOnly();
 
                     if(LoginWayActivity.loggedInCaller || batteryLow) {
                         try {
@@ -188,10 +186,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                             if (isLocationActivelyUsed() || batteryLow)
                                 break;
 
-                            if(updatesOn){
-                                locService.stopLocationUpdates();
-                                locService.stopLocationUpdatesInternetOnly();
-                            }
+                            locService.stopLocationUpdates();
+                            locService.stopLocationUpdatesInternetOnly();
 
                             System.out.println("Inner cycling...");
                             Thread.sleep(1000);
@@ -308,7 +304,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             HubConnection tempHub = hubConnection;
             ExecutorService threadPool = Executors.newCachedThreadPool();
             threadPool.submit(() -> {
-                stopHubConnection();
+                stopHubConnection(tempHub);
                 tempHub.close();
             });
         }
@@ -420,7 +416,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
             Intent notificationIntent = new Intent(this, LoginWayActivity.loggedInCaller ? MainActivityCaller.class : MainActivity.class);
             PendingIntent pendingIntent =
-                    PendingIntent.getActivity(this, 0, notificationIntent, 0);
+                    PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
 
             String channelId;
@@ -442,7 +438,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notification_collapsed);
 
             Intent clickIntent = new Intent(this, NotificationReceiver.class);
-            remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, 0));
+            remoteViews.setOnClickPendingIntent(R.id.notification_layout, PendingIntent.getBroadcast(this, 0, clickIntent, PendingIntent.FLAG_IMMUTABLE));
 
             Notification notification =
                     new NotificationCompat.Builder(main, channelId)
@@ -567,7 +563,11 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         updatesOn = internetUpdatesOn = false;
     }
 
-    public static void stopHubConnection() {
+    public static void stopHubConnection(){
+        stopHubConnection(hubConnection);
+    }
+
+    private static void stopHubConnection(HubConnection hubConnection) {
         //if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
             hubConnection.stop();
         isOnline = false;
