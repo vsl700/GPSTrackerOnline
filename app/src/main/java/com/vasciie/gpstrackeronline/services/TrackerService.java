@@ -210,7 +210,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                             Thread.sleep(500);
                             checks++;
                             System.out.println("Location waiting...");
-                        } while (!locReceived && checks < 14);
+                        } while (!locReceived && checks < 60);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                         return;
