@@ -78,7 +78,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
                 if(!alive/* && MainActivity.currentMainActivity.isDestroyed()*/) {
                     if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
-                        hubConnection.stop();
+                        stopHubConnection(hubConnection);
 
                     hubConnection.close();
                 }
@@ -204,7 +204,6 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                         }
 
                         if(hubConnection.getConnectionState().equals(HubConnectionState.DISCONNECTED)){
-                            isOnline = false;
                             startHubConnection();
                         }
 
@@ -545,7 +544,13 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         try {
             if (!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
                 new HubConnectionTask().execute(hubConnection);
-                hubConnection.onClosed(Throwable::printStackTrace);
+                hubConnection.onClosed(exception -> {
+                    exception.printStackTrace();
+
+                    if(isOnline) {
+                        startHubConnection();
+                    }
+                });
                 isOnline = true;
             }
         }catch (Exception e) {e.printStackTrace();}
@@ -573,8 +578,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
     private static void stopHubConnection(HubConnection hubConnection) {
         //if(hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED))
-            hubConnection.stop();
         isOnline = false;
+        hubConnection.stop();
     }
 
 }
