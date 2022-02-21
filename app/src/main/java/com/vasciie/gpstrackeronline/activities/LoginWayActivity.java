@@ -230,7 +230,6 @@ public class LoginWayActivity extends AppCompatActivity {
 
             if(startup){
                 if(!APIConnector.TargetLogin(code)) {
-                    db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
                     return false;
                 }
             }
@@ -264,7 +263,6 @@ public class LoginWayActivity extends AppCompatActivity {
             cursor.close();
             if(startup){
                 if(!APIConnector.CallerLogin(username, password)) {
-                    db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
                     return false;
                 }
             }

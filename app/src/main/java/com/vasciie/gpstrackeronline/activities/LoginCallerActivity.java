@@ -81,6 +81,9 @@ public class LoginCallerActivity extends AppCompatActivity {
         // Gets the data repository in write mode
         SQLiteDatabase db = LoginWayActivity.dbHelper.getWritableDatabase();
 
+        db.delete(FeedReaderContract.FeedLoggedTarget.TABLE_NAME, null, null);
+        db.delete(FeedReaderContract.FeedLoggedUser.TABLE_NAME, null, null);
+
         // Create a new map of values, where column names are the keys
         ContentValues values = new ContentValues();
         values.put(FeedReaderContract.FeedLoggedUser.COLUMN_NAME_USERNAME, username.getText().toString());
