@@ -114,6 +114,10 @@ public class MainActivityCaller extends MainActivity {
             super.onAvailable(network);
 
             currentMainActivity.syncWithInternet();
+
+            if(currentMainActivity.isDestroyed())
+                return;
+
             ((MainActivityCaller) currentMainActivity).dismissNoInternet();
 
             while(currentMainActivity.outerNetworkCallback == null){

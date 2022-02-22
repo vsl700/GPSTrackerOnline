@@ -1,7 +1,9 @@
 package com.vasciie.gpstrackeronline.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.ActivityOptions;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -10,9 +12,12 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.transition.Slide;
 import android.view.Gravity;
 import android.view.View;
@@ -92,10 +97,18 @@ public class LoginWayActivity extends AppCompatActivity {
 
     private boolean checkLogin; // Used to verify permissions first and then try entering...
 
+    @SuppressLint("BatteryLife")
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         checkLogin = false;
+
+        if(!((PowerManager) getSystemService(Context.POWER_SERVICE)).isIgnoringBatteryOptimizations(getPackageName())) {
+            Toast.makeText(this, "Please ALLOW LESS OPTIMIZATION, it's important for the Tracker's normal work", Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+            finish();
+        }
+
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED ||
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED){

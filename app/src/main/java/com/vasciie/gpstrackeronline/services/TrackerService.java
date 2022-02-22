@@ -26,6 +26,7 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.Process;
 import android.widget.RemoteViews;
 
@@ -142,6 +143,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     private static final class ServiceHandler extends Handler {
         private final TrackerService locService;
         private final Random r;
+        int timeoutTicks;
 
         public ServiceHandler(TrackerService locService, Looper looper) {
             super(looper);
@@ -154,6 +156,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         public void handleMessage(@NonNull Message msg) {
             System.out.println("Service Loop");
             long normalMillis = 1000;
+            timeoutTicks = 0;
 
             // We don't make use of the LocationRequest's time interval properties due to the fact
             // that some phones literally stop the updates when the app is closed and only the
@@ -187,6 +190,8 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                             locService.stopLocationUpdates();
                             locService.stopLocationUpdatesInternetOnly();
 
+                            hubConnectTimeout();
+
                             System.out.println("Inner cycling...");
                             Thread.sleep(1000);
                             secs++;
@@ -203,15 +208,13 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                             locService.startLocationUpdates();
                         }
 
-                        if(hubConnection.getConnectionState().equals(HubConnectionState.DISCONNECTED)){
-                            startHubConnection();
-                        }
-
                         int checks = 0;
                         do {
                             Thread.sleep(500);
                             checks++;
                             System.out.println("Location waiting...");
+
+                            hubConnectTimeout();
                         } while (!locReceived && checks < 60);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
@@ -227,6 +230,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                         locService.stopLocationUpdatesInternetOnly();
                         locService.startLocationUpdates();
                     }
+
+                    if(LoginWayActivity.loggedInTarget)
+                        hubConnectTimeout();
                 }
 
                 try {
@@ -247,13 +253,37 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             return main != null && !main.isDestroyed() || isCallerTracking;
         }
 
+        private void hubConnectTimeout(){
+            if(hubConnection == null || !locService.isNetworkEnabled())
+                return;
+
+            if(hubConnection.getConnectionState().equals(HubConnectionState.DISCONNECTED)){
+                timeoutTicks++;
+
+                if(timeoutTicks > 5) {
+                    createHubConnection();
+                    startHubConnection();
+                    timeoutTicks = 0;
+                }
+            }else{
+                timeoutTicks = 0;
+            }
+        }
+
     }
 
     public static Location prevLoc;
+    @SuppressLint("WakelockTimeout")
     @Override
     public void onCreate() {
-        if(locationListener != null)
-            return;
+        while(MainActivity.currentMainActivity == null){
+            System.out.println("Waiting for the main activity...");
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
 
         alive = true;
 
@@ -261,6 +291,13 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         if(main.isDestroyed() && LoginWayActivity.loggedInTarget){
             main.outerNetworkCallback = this;
             main.requestConnectionCallback(); // In the case where only the service starts, without the activity (when the Target receives an SMS)
+        }
+
+        if(LoginWayActivity.loggedInTarget) {
+            PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            @SuppressLint("InvalidWakeLockTag")
+            PowerManager.WakeLock mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "worker");
+            mWakeLock.acquire();
         }
 
         thread = new HandlerThread("ServiceStartArguments",
@@ -319,6 +356,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             value = LoginWayActivity.getLoggedTargetCode() + "";
         else value = LoginWayActivity.getLoggedUserName();
         hubConnection = HubConnectionBuilder.create(primaryLink + "/NotificationUserHub?userId=" + value).build();
+        hubConnection.setServerTimeout(10000);
 
         if(LoginWayActivity.loggedInCaller)
             hubConnection.on("sendToUser", (targetCode, message) -> main.runOnUiThread(() -> {
@@ -376,9 +414,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         }
 
         if(LoginWayActivity.loggedInCaller) {
-            if(hubConnection == null)
-                createHubConnection();
-
+            createHubConnection();
             startHubConnection();
         }
     }
@@ -465,6 +501,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     public static boolean alive = false;
     @Override
     public void onDestroy() {
+        if(thread == null)
+            return;
+
         thread.interrupt();
         thread.quit();
 
@@ -547,13 +586,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
         try {
             if (!isOnline || !hubConnection.getConnectionState().equals(HubConnectionState.CONNECTED)) {
                 new HubConnectionTask().execute(hubConnection);
-                hubConnection.onClosed(exception -> {
-                    exception.printStackTrace();
-
-                    if(isOnline) {
-                        startHubConnection();
-                    }
-                });
+                hubConnection.onClosed(Throwable::printStackTrace);
                 isOnline = true;
             }
         }catch (Exception e) {e.printStackTrace();}
