@@ -163,6 +163,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             // app service is working
             while (true) {
                 System.out.println("Cycling...");
+
                 if(batteryLow)
                     System.out.println("Low battery");
                 if (!isLocationActivelyUsed()) {
@@ -231,8 +232,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
                         locService.startLocationUpdates();
                     }
 
-                    if(LoginWayActivity.loggedInTarget)
-                        hubConnectTimeout();
+                    hubConnectTimeout();
                 }
 
                 try {
@@ -273,6 +273,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
     }
 
     public static Location prevLoc;
+    private PowerManager.WakeLock mWakeLock;
     @SuppressLint("WakelockTimeout")
     @Override
     public void onCreate() {
@@ -295,9 +296,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
         if(LoginWayActivity.loggedInTarget) {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-            @SuppressLint("InvalidWakeLockTag")
-            PowerManager.WakeLock mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "worker");
-            mWakeLock.acquire();
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "phtron:partialwakeuplock");
         }
 
         thread = new HandlerThread("ServiceStartArguments",
@@ -439,7 +438,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
     private BroadcastReceiver batteryReceiver;
     private static boolean isOnline = false;
-    @SuppressLint("RemoteViewLayout")
+    @SuppressLint({"RemoteViewLayout", "WakelockTimeout"})
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         main = MainActivity.currentMainActivity;
@@ -449,6 +448,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             Message msg = serviceHandler.obtainMessage();
             msg.arg1 = startId;
             serviceHandler.sendMessage(msg);
+
+            if(mWakeLock != null)
+                mWakeLock.acquire();
 
             if(LoginWayActivity.loggedInTarget) {
                 IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
@@ -495,7 +497,7 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
             startForeground(12893, notification);
         }
 
-        return START_STICKY;
+        return START_NOT_STICKY;
     }
 
     public static boolean alive = false;
@@ -521,6 +523,9 @@ public class TrackerService extends Service implements MainActivity.OuterNetwork
 
         if(LoginWayActivity.loggedInTarget)
             unregisterReceiver(batteryReceiver);
+
+        if(mWakeLock != null)
+            mWakeLock.release();
 
         isCallerTracking = false;
 

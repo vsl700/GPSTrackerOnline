@@ -475,8 +475,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private boolean startServicesInvoked = false;
     private void startServices(){
-        if(!startServicesInvoked)
-            startService(locService);
+        if(!startServicesInvoked) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(locService);
+            } else {
+                startService(locService);
+            }
+        }
 
 
         startServicesInvoked = true;

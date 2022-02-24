@@ -84,6 +84,7 @@ public final class APIConnector {
     }
 
     public static boolean TargetLogin(int code) {
+        cookieManager.getCookieStore().removeAll();
         try {
             URL url = new URL(primaryLink + "/api/target/login?targetCode=" + code);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();

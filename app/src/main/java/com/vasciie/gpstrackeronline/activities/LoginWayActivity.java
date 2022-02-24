@@ -52,6 +52,9 @@ public class LoginWayActivity extends AppCompatActivity {
                     objects[0].entryProgressBar.setVisibility(View.INVISIBLE);
                     objects[0].loginCallerBtn.setEnabled(true);
                     objects[0].loginTargetBtn.setEnabled(true);
+
+                    if(TrackerService.alive)
+                        objects[0].stopService(MainActivity.locService);
                 });
             }
 
@@ -121,10 +124,6 @@ public class LoginWayActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.ACCESS_BACKGROUND_LOCATION}, TrackerService.gpsBGAccessRequestCode);
         }
         else {
-            if (TrackerService.alive) {
-                startMainActivity();
-                return;
-            }
             checkLogin = true;
         }
 
@@ -192,9 +191,6 @@ public class LoginWayActivity extends AppCompatActivity {
                 if(ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
                     ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_CONTACTS}, contactsReadRequestCode);
                 }
-            }
-            else if(TrackerService.alive) {
-                startMainActivity();
             }else{
                 new LoginCheckTask().execute(this);
             }
