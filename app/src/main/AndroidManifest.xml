@@ -43,7 +43,9 @@
 
         <activity
             android:name=".activities.MainActivityCaller"
-            android:exported="true" />
+            android:screenOrientation="portrait"
+            android:exported="true"
+            tools:ignore="LockedOrientationActivity" />
 
         <activity
             android:name=".activities.MainActivity"

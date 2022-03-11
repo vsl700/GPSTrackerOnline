@@ -25,7 +25,7 @@ import java.util.Map;
  * Phone Tracker-Online API. This class cannot be extended or instantiated
  */
 public final class APIConnector {
-    public static final String primaryLink = "https://phonetracker.sytes.net";
+    public static final String primaryLink = "http://vsl700-001-site1.gtempurl.com";
 
 
     private APIConnector() {
