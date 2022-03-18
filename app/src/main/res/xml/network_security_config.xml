@@ -6,4 +6,7 @@
             <certificates src="system"/>
         </trust-anchors>
     </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">http://vsl700-001-site1.gtempurl.com/</domain>
+    </domain-config>
 </network-security-config>

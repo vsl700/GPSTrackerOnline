@@ -272,7 +272,7 @@ public final class APIConnector {
             String capTime = capIter.next();
 
             String data = lat + ";" + lng + ";" + image + ";" + capTime;
-            locations.put(data.replace(".", ","));
+            locations.put(data/*.replace(".", ",")*/); // Local site ONLY (for symbol replacement)
         }
 
         try {
